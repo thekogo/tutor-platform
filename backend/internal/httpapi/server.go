@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/thekogo/tutor-platform/backend/internal/app"
@@ -19,18 +20,20 @@ const sessionCookieName = auth.SessionCookie
 
 // Config configures the REST API.
 type Config struct {
-	AppBaseURL     string // allowed Origin for unsafe methods; redirect target after login
+	AppBaseURL     string   // redirect target after login
+	AllowedOrigins []string // Origins allowed on unsafe methods; empty = AppBaseURL's origin; "*" allows any
 	MaxBodyBytes   int64
 	RequestTimeout time.Duration
 }
 
 // Server implements StrictServerInterface.
 type Server struct {
-	app           *app.Service
-	auth          *auth.Service
-	cfg           Config
-	log           *slog.Logger
-	allowedOrigin string
+	app            *app.Service
+	auth           *auth.Service
+	cfg            Config
+	log            *slog.Logger
+	allowedOrigins map[string]bool
+	allowAnyOrigin bool
 }
 
 var _ StrictServerInterface = (*Server)(nil)
@@ -43,7 +46,17 @@ func New(svc *app.Service, authSvc *auth.Service, cfg Config, log *slog.Logger) 
 	if cfg.RequestTimeout == 0 {
 		cfg.RequestTimeout = 30 * time.Second
 	}
-	s := &Server{app: svc, auth: authSvc, cfg: cfg, log: log, allowedOrigin: originOf(cfg.AppBaseURL)}
+	s := &Server{app: svc, auth: authSvc, cfg: cfg, log: log, allowedOrigins: map[string]bool{}}
+	if len(cfg.AllowedOrigins) == 0 {
+		cfg.AllowedOrigins = []string{cfg.AppBaseURL}
+	}
+	for _, o := range cfg.AllowedOrigins {
+		if o == "*" {
+			s.allowAnyOrigin = true
+			continue
+		}
+		s.allowedOrigins[strings.ToLower(originOf(o))] = true
+	}
 	strict := NewStrictHandlerWithOptions(s, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			var mbe *http.MaxBytesError

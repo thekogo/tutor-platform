@@ -26,6 +26,7 @@ type AnswerEvidence struct {
 	PrimaryConcept ConceptID
 	OtherConcepts  []ConceptID
 	IsRepeat       bool // the Learner had already answered this Question before
+	IsPlacement    bool // given during a Placement Test (weighted by PlacementWeight)
 }
 
 // MasteryConfig holds the tunable parameters of the Mastery calculation.
@@ -33,6 +34,7 @@ type MasteryConfig struct {
 	PrimaryWeight    float64         // weight of evidence for the Primary Concept (default 1.0)
 	SecondaryWeight  float64         // weight for other tagged Concepts (default 0.5)
 	RepeatWeight     float64         // multiplier for repeat Answers (default 0.3)
+	PlacementWeight  float64         // multiplier for Placement Test Answers (default 4.0: one Primary probe at any Difficulty reaches MinEvidence)
 	RecencyDecay     float64         // per-newer-Answer multiplier on older evidence for the same Concept (default 0.85)
 	DifficultyWeight map[int]float64 // default {1: 0.8, 2: 1.0, 3: 1.25}; a Difficulty missing from the map weighs 1.0
 	MinEvidence      float64         // below this total weight the level is Unassessed (default 3.0, before recency decay)
@@ -46,6 +48,7 @@ func DefaultMasteryConfig() MasteryConfig {
 		PrimaryWeight:    1.0,
 		SecondaryWeight:  0.5,
 		RepeatWeight:     0.3,
+		PlacementWeight:  4.0,
 		RecencyDecay:     0.85,
 		DifficultyWeight: map[int]float64{1: 0.8, 2: 1.0, 3: 1.25},
 		MinEvidence:      3.0,
@@ -71,7 +74,7 @@ const floatTolerance = 1e-9
 //
 // For each Concept, every Answer contributes weight
 //
-//	w = roleWeight (Primary/Secondary) × DifficultyWeight[d] × (RepeatWeight if repeat) × RecencyDecay^k
+//	w = roleWeight (Primary/Secondary) × DifficultyWeight[d] × (RepeatWeight if repeat) × (PlacementWeight if placement) × RecencyDecay^k
 //
 // where k is the number of Answers touching that Concept with a strictly later
 // AnsweredAt (Answers with equal timestamps do not decay each other, so the
@@ -99,6 +102,9 @@ func ComputeMastery(evidence []AnswerEvidence, cfg MasteryConfig) map[ConceptID]
 		}
 		if a.IsRepeat {
 			base *= cfg.RepeatWeight
+		}
+		if a.IsPlacement && cfg.PlacementWeight > 0 {
+			base *= cfg.PlacementWeight
 		}
 		touched := make(map[ConceptID]bool, 1+len(a.OtherConcepts))
 		if a.PrimaryConcept != "" {

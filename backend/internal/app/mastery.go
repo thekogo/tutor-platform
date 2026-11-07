@@ -28,6 +28,7 @@ func toEvidence(rows []store.MasteryEvidenceRow) []domain.AnswerEvidence {
 			PrimaryConcept: cid(r.PrimaryConceptID),
 			OtherConcepts:  others,
 			IsRepeat:       r.IsRepeat,
+			IsPlacement:    r.IsPlacement,
 		})
 	}
 	return ev

@@ -132,11 +132,14 @@ func (s *Server) apiMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) originAllowed(r *http.Request) bool {
+	if s.allowAnyOrigin {
+		return true
+	}
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return false
 	}
-	return strings.EqualFold(strings.TrimRight(origin, "/"), s.allowedOrigin)
+	return s.allowedOrigins[strings.ToLower(strings.TrimRight(origin, "/"))]
 }
 
 func originOf(raw string) string {

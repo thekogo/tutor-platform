@@ -45,7 +45,7 @@ func approx(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
 
 func TestDefaultMasteryConfig(t *testing.T) {
 	want := MasteryConfig{
-		PrimaryWeight: 1.0, SecondaryWeight: 0.5, RepeatWeight: 0.3, RecencyDecay: 0.85,
+		PrimaryWeight: 1.0, SecondaryWeight: 0.5, RepeatWeight: 0.3, PlacementWeight: 4.0, RecencyDecay: 0.85,
 		DifficultyWeight: map[int]float64{1: 0.8, 2: 1.0, 3: 1.25},
 		MinEvidence:      3.0, WeakBelow: 0.5, MasteredAtLeast: 0.8,
 	}
@@ -248,5 +248,27 @@ func TestLevelOf(t *testing.T) {
 	}
 	if got := LevelOf(nil, "c"); got.Level != Unassessed || got.Concept != "c" {
 		t.Errorf("LevelOf(nil, c) = %+v", got)
+	}
+}
+
+func TestComputeMasteryPlacementWeight(t *testing.T) {
+	cfg := plainConfig()
+	cfg.PlacementWeight = 4
+	probe := ans("a", true, 0)
+	probe.IsPlacement = true
+
+	m := ComputeMastery([]AnswerEvidence{probe}, cfg)
+	if got := m["a"]; !approx(got.Evidence, 4) || got.Level != Mastered {
+		t.Fatalf("one placement probe should reach MinEvidence: %+v", got)
+	}
+	if got := ComputeMastery([]AnswerEvidence{ans("a", true, 0)}, cfg)["a"]; got.Level != Unassessed {
+		t.Fatalf("one ordinary Answer must stay Unassessed: %+v", got)
+	}
+
+	// With the defaults, a probe at the lowest Difficulty is still enough.
+	easy := probe
+	easy.Difficulty = 1
+	if got := ComputeMastery([]AnswerEvidence{easy}, DefaultMasteryConfig())["a"]; got.Level == Unassessed {
+		t.Fatalf("default PlacementWeight too low for Difficulty 1: %+v", got)
 	}
 }

@@ -181,8 +181,9 @@ func (q *Queries) GetSessionLearner(ctx context.Context, tokenHash []byte) (Lear
 
 const learnerPlacementDone = `-- name: LearnerPlacementDone :one
 SELECT EXISTS (
-    SELECT 1 FROM study_sessions
-    WHERE learner_id = $1 AND kind = 'placement' AND finished_at IS NOT NULL
+    SELECT 1 FROM study_sessions s
+    WHERE s.learner_id = $1 AND s.kind = 'placement' AND s.finished_at IS NOT NULL
+      AND EXISTS (SELECT 1 FROM answers a WHERE a.session_id = s.id)
 )::boolean AS done
 `
 

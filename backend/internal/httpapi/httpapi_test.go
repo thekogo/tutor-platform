@@ -44,13 +44,13 @@ type harness struct {
 	srv *httptest.Server
 }
 
-func newHarness(t *testing.T, devLogin bool) *harness {
+func newHarness(t *testing.T, devLogin bool, allowedOrigins ...string) *harness {
 	t.Helper()
 	env := testutil.NewEnv(t)
 	log := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	authSvc := auth.New(env.Pool, auth.Config{AppBaseURL: origin, DevLogin: devLogin}, fakeIdP{})
 	mux := http.NewServeMux()
-	mux.Handle("/api/", httpapi.New(env.App, authSvc, httpapi.Config{AppBaseURL: origin}, log))
+	mux.Handle("/api/", httpapi.New(env.App, authSvc, httpapi.Config{AppBaseURL: origin, AllowedOrigins: allowedOrigins}, log))
 	srv := httptest.NewServer(httpapi.Common(mux, log))
 	t.Cleanup(srv.Close)
 	return &harness{t: t, env: env, srv: srv}
@@ -487,4 +487,21 @@ func TestCourseProgressEndpoints(t *testing.T) {
 	wantStatus(t, c.do(http.MethodGet, "/api/courses/"+cid+"/learning-path", nil), http.StatusOK, "")
 	wantStatus(t, c.do(http.MethodDelete, "/api/courses/"+cid+"/learning-path", nil), http.StatusNoContent, "")
 	wantStatus(t, c.do(http.MethodPost, "/api/courses/"+cid+"/learning-path", map[string]any{"rootConceptId": h.env.Concepts["c"], "targetConceptId": h.env.Concepts["a"]}), http.StatusUnprocessableEntity, "not_prerequisite")
+}
+
+func TestAllowedOriginsWildcard(t *testing.T) {
+	c := newHarness(t, true, "*").client()
+	// Any Origin (e.g. an ngrok tunnel) and a missing Origin are accepted.
+	for _, o := range []string{"https://abc123.ngrok-free.app", ""} {
+		r := c.do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}, "Origin", o)
+		if r.status != http.StatusNoContent {
+			t.Fatalf("origin %q: %d %s", o, r.status, r.body)
+		}
+	}
+}
+
+func TestAllowedOriginsList(t *testing.T) {
+	c := newHarness(t, true, origin, "https://tunnel.example").client()
+	wantStatus(t, c.do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}, "Origin", "https://tunnel.example/"), http.StatusNoContent, "")
+	wantStatus(t, c.do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}, "Origin", "https://evil.example"), http.StatusForbidden, "bad_origin")
 }

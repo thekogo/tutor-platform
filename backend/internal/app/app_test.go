@@ -608,3 +608,38 @@ func must2(t *testing.T) func([]app.MasteryOverviewItem, int, error) ([]app.Mast
 		return v, n
 	}
 }
+
+func TestPlacementRequiresQuestionsAndSeedsMastery(t *testing.T) {
+	e := testutil.NewEnv(t)
+	a := e.Learner(t, "l@example.com", false)
+
+	// No Active Questions: refuse to start, and nothing counts as done.
+	_, err := e.App.CreateSession(ctx, a, app.CreateSessionInput{Kind: app.KindPlacement, CourseID: e.CourseID})
+	wantKind(t, err, app.KindInvalid, "no_questions")
+	if must[bool](t)(e.App.LearnerPlacementDone(ctx, a.LearnerID)) {
+		t.Fatal("placementDone without any Answers")
+	}
+
+	e.ActiveQuestions(t, 2, 2, "c")
+	s := must[app.SessionView](t)(e.App.CreateSession(ctx, a, app.CreateSessionInput{Kind: app.KindPlacement, CourseID: e.CourseID}))
+	q := must[*app.ServedQuestion](t)(e.App.NextQuestion(ctx, a, s.ID))
+	if q == nil {
+		t.Fatal("no probe served")
+	}
+	must[app.AnswerResult](t)(e.App.SubmitAnswer(ctx, a, app.SubmitAnswerInput{SessionID: s.ID, QuestionID: q.ID, ChoiceID: e.Choice(t, q.ID, "A")}))
+	must[app.SessionResult](t)(e.App.FinishSession(ctx, a, s.ID))
+
+	// A single probe Answer is enough to leave Unassessed (PlacementWeight).
+	assessed := false
+	for _, m := range must[[]app.MasteryView](t)(e.App.CourseMastery(ctx, a, e.CourseID)) {
+		if m.ConceptID == e.Concepts["c"] && m.Level != domain.Unassessed {
+			assessed = true
+		}
+	}
+	if !assessed {
+		t.Fatal("placement probe did not seed Mastery")
+	}
+	if !must[bool](t)(e.App.LearnerPlacementDone(ctx, a.LearnerID)) {
+		t.Fatal("placementDone not set after answering")
+	}
+}

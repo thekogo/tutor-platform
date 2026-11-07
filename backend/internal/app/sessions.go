@@ -164,6 +164,18 @@ func (s *Service) CreateSession(ctx context.Context, a Actor, in CreateSessionIn
 		}
 		params.MaxQuestions = ptr(int32(len(picks))) //nolint:gosec // at most QuizSize
 	case KindPlacement:
+		// Refuse an empty Placement Test: it would finish with no Answers.
+		var all []uuid.UUID
+		for _, c := range g.LiveConcepts() {
+			all = append(all, c.ID)
+		}
+		avail, _, err := pickQuestions(ctx, s.q, a.LearnerID, all, 1, 3, 1)
+		if err != nil {
+			return SessionView{}, err
+		}
+		if len(avail) == 0 {
+			return SessionView{}, E(KindInvalid, "no_questions", "no Active Questions are available yet for a Placement Test")
+		}
 		params.MaxQuestions = ptr(int32(PlacementMaxProbes))
 	case KindExam:
 		if in.ExamID == nil {

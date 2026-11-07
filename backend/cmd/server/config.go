@@ -14,6 +14,7 @@ type Config struct {
 	DatabaseURL        string
 	HTTPAddr           string
 	AppBaseURL         string
+	AllowedOrigins     []string // Origins allowed on unsafe methods; ["*"] allows any
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -51,6 +52,11 @@ func loadConfig() (Config, error) {
 		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  env("GOOGLE_REDIRECT_URL", ""),
 		MCPToken:           env("MCP_TOKEN", ""),
+	}
+	for _, o := range strings.Split(env("ALLOWED_ORIGINS", c.AppBaseURL), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			c.AllowedOrigins = append(c.AllowedOrigins, o)
+		}
 	}
 	var err error
 	if c.CookieSecure, err = envBool("SESSION_COOKIE_SECURE", true); err != nil {

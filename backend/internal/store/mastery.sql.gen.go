@@ -385,12 +385,14 @@ SELECT a.id,
        a.correct,
        a.answered_at,
        a.is_repeat,
+       (ss.kind = 'placement')::boolean AS is_placement,
        q.difficulty,
        pc.concept_id AS primary_concept_id,
        ARRAY(SELECT oc.concept_id FROM question_concepts oc
              WHERE oc.question_id = q.id AND NOT oc.is_primary
              ORDER BY oc.concept_id)::uuid[] AS other_concept_ids
 FROM answers a
+JOIN study_sessions ss ON ss.id = a.session_id
 JOIN questions q ON q.id = a.question_id
 JOIN question_concepts pc ON pc.question_id = q.id AND pc.is_primary
 WHERE a.learner_id = $1
@@ -415,6 +417,7 @@ type MasteryEvidenceRow struct {
 	Correct          bool
 	AnsweredAt       time.Time
 	IsRepeat         bool
+	IsPlacement      bool
 	Difficulty       int16
 	PrimaryConceptID uuid.UUID
 	OtherConceptIds  []uuid.UUID
@@ -437,6 +440,7 @@ func (q *Queries) MasteryEvidence(ctx context.Context, arg MasteryEvidenceParams
 			&i.Correct,
 			&i.AnsweredAt,
 			&i.IsRepeat,
+			&i.IsPlacement,
 			&i.Difficulty,
 			&i.PrimaryConceptID,
 			&i.OtherConceptIds,

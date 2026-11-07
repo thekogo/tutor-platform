@@ -18,8 +18,9 @@ SELECT * FROM learners ORDER BY created_at, id;
 
 -- name: LearnerPlacementDone :one
 SELECT EXISTS (
-    SELECT 1 FROM study_sessions
-    WHERE learner_id = $1 AND kind = 'placement' AND finished_at IS NOT NULL
+    SELECT 1 FROM study_sessions s
+    WHERE s.learner_id = $1 AND s.kind = 'placement' AND s.finished_at IS NOT NULL
+      AND EXISTS (SELECT 1 FROM answers a WHERE a.session_id = s.id)
 )::boolean AS done;
 
 -- name: CreateSession :exec

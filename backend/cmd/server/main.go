@@ -114,7 +114,7 @@ func serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 	authSvc := auth.New(pool, auth.Config{AppBaseURL: cfg.AppBaseURL, CookieSecure: cfg.CookieSecure, DevLogin: cfg.DevLogin}, idp)
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/", httpapi.New(svc, authSvc, httpapi.Config{AppBaseURL: cfg.AppBaseURL}, log))
+	mux.Handle("/api/", httpapi.New(svc, authSvc, httpapi.Config{AppBaseURL: cfg.AppBaseURL, AllowedOrigins: cfg.AllowedOrigins}, log))
 	mux.Handle("/mcp", http.MaxBytesHandler(mcpserver.Handler(svc, cfg.MCPToken, log), 8<<20))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
