@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
+
+  /* Mastery Levels — always paired with text + icon, never colour alone. */
+  --color-level-unassessed: #64748b;
+  --color-level-unassessed-bg: #f1f5f9;
+  --color-level-weak: #b91c1c;
+  --color-level-weak-bg: #fee2e2;
+  --color-level-developing: #a16207;
+  --color-level-developing-bg: #fef3c7;
+  --color-level-mastered: #15803d;
+  --color-level-mastered-bg: #dcfce7;
+
+  --color-brand: #1d4ed8;
+  --color-brand-dark: #1e3a8a;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Long display math should scroll rather than overflow on mobile. */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
+.prose-lesson h2 { @apply mt-6 mb-2 text-xl font-semibold; }
+.prose-lesson h3 { @apply mt-4 mb-2 text-lg font-semibold; }
+.prose-lesson p { @apply my-2 leading-relaxed; }
+.prose-lesson ul { @apply my-2 list-disc pl-6; }
+.prose-lesson ol { @apply my-2 list-decimal pl-6; }
+.prose-lesson blockquote { @apply my-3 border-l-4 border-blue-300 bg-blue-50 px-4 py-2 text-slate-700; }
+.prose-lesson table { @apply my-3 w-full border-collapse text-sm; }
+.prose-lesson th, .prose-lesson td { @apply border border-slate-300 px-3 py-1.5 text-left; }
+.prose-lesson th { @apply bg-slate-100; }
+.prose-lesson code { @apply rounded bg-slate-100 px-1 py-0.5 text-sm; }
+.prose-lesson a { @apply text-blue-700 underline; }
