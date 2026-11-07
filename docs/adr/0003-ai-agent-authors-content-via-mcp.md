@@ -1,0 +1,3 @@
+# Content is authored by an AI agent through an MCP server, with no human pre-review
+
+All Courses, Concepts, Prerequisites, Lessons and Questions are generated or imported by an AI agent, which writes them through an MCP server layered over the Go service's authoring operations. No human reviews Questions before they are served, because the only humans are Learners and seeing a Question in advance would spoil it. Quality is protected instead by platform-side validation on every write (no Prerequisite cycles, tags reference existing Concepts, every Question has an Explanation), an independent AI verification pass before a Question moves from Draft to Active, and Learner Flags that pull a Question and exclude its Answers from Mastery until fixed.

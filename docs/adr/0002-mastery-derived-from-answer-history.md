@@ -1,0 +1,3 @@
+# Mastery is derived from the full Answer history, not stored as the source of truth
+
+We keep every Answer permanently and treat each Learner's Mastery as a recomputable projection of those Answers. This lets us change the Mastery calculation (e.g. move from weighted accuracy to Bayesian Knowledge Tracing), and lets Content Admins split, merge, or retag Concepts on a live Course, without losing learner history — the new Concepts' Mastery is rebuilt from the Answers to Questions now tagged with them. The cost is more storage and a recompute path; a stored Mastery value may exist as a cache, but never as the only record.

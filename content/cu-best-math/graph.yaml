@@ -1,0 +1,485 @@
+# CU-BEST Math — knowledge graph (draft v0.1)
+#
+# Seed content for the Content Admin agent to import.
+# - topics: mirror the knowledge items of the course outline
+# - concepts: graph nodes; `prerequisites` lists Concepts that must come first
+# - question_formats: presentation styles, NOT graph nodes
+#
+# exam_weight is null everywhere: unknown until calibrated against past papers.
+
+course:
+  id: cu-best-math
+  name: CU-BEST คณิตศาสตร์
+  goal: สอบเข้า ป.โท จุฬาฯ (CU-BEST)
+
+question_formats:
+  - id: standard
+    name: โจทย์ปกติ
+  - id: data-sufficiency
+    name: Data sufficiency
+  - id: out-of-the-box
+    name: คณิตคิดนอกกรอบ
+
+topics:
+  - { id: number-system,         name: ระบบจำนวน,              exam_weight: null }
+  - { id: equations-inequalities, name: สมการ และอสมการ,        exam_weight: null }
+  - { id: ratio-proportion,      name: อัตราส่วนและสัดส่วน,      exam_weight: null }
+  - { id: rule-of-three,         name: บัญญัติไตรยางศ์,          exam_weight: null }
+  - { id: percent,               name: ร้อยละ เปอร์เซ็นต์,        exam_weight: null }
+  - { id: geometry,              name: เรขาคณิต,                exam_weight: null }
+  - { id: analytic-geometry,     name: เรขาคณิตวิเคราะห์,         exam_weight: null }
+  - { id: sequences-series,      name: ลำดับ อนุกรม,             exam_weight: null }
+  - { id: statistics,            name: สถิติ,                    exam_weight: null }
+  - { id: sets,                  name: เซต,                     exam_weight: null }
+  - { id: counting-probability,  name: การนับ ความน่าจะเป็น,       exam_weight: null }
+  - { id: mixtures,              name: ของผสม,                  exam_weight: null }
+  - { id: motion,                name: การเคลื่อนที่,              exam_weight: null }
+  - { id: work,                  name: การทำงาน,                exam_weight: null }
+  - { id: tables-graphs,         name: ตาราง กราฟ,               exam_weight: null }
+
+concepts:
+  # ── ระบบจำนวน ──────────────────────────────────────────────
+  - id: integer-operations
+    topic: number-system
+    name: การดำเนินการจำนวนเต็มและลำดับการคำนวณ
+    prerequisites: []
+  - id: fractions
+    topic: number-system
+    name: เศษส่วน
+    prerequisites: [integer-operations]
+  - id: decimals
+    topic: number-system
+    name: ทศนิยม
+    prerequisites: [fractions]
+  - id: estimation
+    topic: number-system
+    name: การประมาณค่าและคำนวณเร็ว
+    prerequisites: [fractions, decimals]
+  - id: odd-even-sign
+    topic: number-system
+    name: สมบัติคู่-คี่ และเครื่องหมายบวก-ลบ
+    prerequisites: [integer-operations]
+  - id: divisibility
+    topic: number-system
+    name: การหารลงตัว ตัวประกอบ จำนวนเฉพาะ
+    prerequisites: [integer-operations]
+  - id: gcd-lcm
+    topic: number-system
+    name: ห.ร.ม. และ ค.ร.น.
+    prerequisites: [divisibility]
+  - id: remainders
+    topic: number-system
+    name: เศษจากการหาร
+    prerequisites: [divisibility]
+  - id: exponents
+    topic: number-system
+    name: เลขยกกำลัง
+    prerequisites: [integer-operations, fractions]
+  - id: roots
+    topic: number-system
+    name: รากที่สองและกรณฑ์
+    prerequisites: [exponents]
+  - id: unit-digit
+    topic: number-system
+    name: หลักหน่วยของเลขยกกำลัง
+    prerequisites: [exponents, remainders]
+  - id: absolute-value
+    topic: number-system
+    name: ค่าสัมบูรณ์
+    prerequisites: [integer-operations]
+
+  # ── สมการ และอสมการ ────────────────────────────────────────
+  - id: algebraic-expressions
+    topic: equations-inequalities
+    name: นิพจน์พีชคณิตและการจัดรูป
+    prerequisites: [integer-operations, fractions]
+  - id: factoring
+    topic: equations-inequalities
+    name: การแยกตัวประกอบพหุนาม
+    prerequisites: [algebraic-expressions]
+  - id: linear-equations
+    topic: equations-inequalities
+    name: สมการเชิงเส้นตัวแปรเดียว
+    prerequisites: [algebraic-expressions]
+  - id: word-problem-translation
+    topic: equations-inequalities
+    name: แปลงโจทย์ปัญหาเป็นสมการ
+    prerequisites: [linear-equations]
+  - id: age-problems
+    topic: equations-inequalities
+    name: โจทย์อายุ
+    prerequisites: [word-problem-translation, linear-systems]
+  - id: linear-systems
+    topic: equations-inequalities
+    name: ระบบสมการเชิงเส้นสองตัวแปร
+    prerequisites: [linear-equations]
+  - id: quadratic-equations
+    topic: equations-inequalities
+    name: สมการกำลังสอง
+    prerequisites: [factoring, roots]
+  - id: exponential-equations
+    topic: equations-inequalities
+    name: สมการเลขยกกำลัง
+    prerequisites: [exponents, linear-equations]
+  - id: linear-inequalities
+    topic: equations-inequalities
+    name: อสมการเชิงเส้น
+    prerequisites: [linear-equations]
+  - id: quadratic-inequalities
+    topic: equations-inequalities
+    name: อสมการกำลังสอง
+    prerequisites: [quadratic-equations, linear-inequalities]
+  - id: absolute-value-equations
+    topic: equations-inequalities
+    name: สมการและอสมการค่าสัมบูรณ์
+    prerequisites: [absolute-value, linear-inequalities]
+
+  # ── อัตราส่วนและสัดส่วน ─────────────────────────────────────
+  - id: ratio-basics
+    topic: ratio-proportion
+    name: อัตราส่วนและอัตราส่วนที่เท่ากัน
+    prerequisites: [fractions]
+  - id: proportion
+    topic: ratio-proportion
+    name: สัดส่วนและการแก้สัดส่วน
+    prerequisites: [ratio-basics, linear-equations]
+  - id: multi-ratio
+    topic: ratio-proportion
+    name: อัตราส่วนของหลายจำนวน (a:b:c)
+    prerequisites: [ratio-basics, gcd-lcm]
+  - id: dividing-in-ratio
+    topic: ratio-proportion
+    name: การแบ่งตามอัตราส่วน
+    prerequisites: [ratio-basics]
+  - id: ratio-change
+    topic: ratio-proportion
+    name: อัตราส่วนเมื่อเพิ่มหรือลดปริมาณ
+    prerequisites: [proportion, word-problem-translation]
+
+  # ── บัญญัติไตรยางศ์ ────────────────────────────────────────
+  - id: direct-variation
+    topic: rule-of-three
+    name: การแปรผันตรง
+    prerequisites: [proportion]
+  - id: inverse-variation
+    topic: rule-of-three
+    name: การแปรผกผัน
+    prerequisites: [direct-variation]
+  - id: rule-of-three
+    topic: rule-of-three
+    name: บัญญัติไตรยางศ์ (ตรงและผกผัน)
+    prerequisites: [direct-variation, inverse-variation]
+
+  # ── ร้อยละ เปอร์เซ็นต์ ─────────────────────────────────────
+  - id: percent-basics
+    topic: percent
+    name: ความหมายของร้อยละ และการแปลงเศษส่วน/ทศนิยม
+    prerequisites: [fractions, decimals]
+  - id: percent-of
+    topic: percent
+    name: การหาร้อยละของจำนวน และหาจำนวนเต็มย้อนกลับ
+    prerequisites: [percent-basics, proportion]
+  - id: percent-change
+    topic: percent
+    name: ร้อยละการเปลี่ยนแปลง (เพิ่ม/ลด)
+    prerequisites: [percent-of]
+  - id: successive-percent
+    topic: percent
+    name: ร้อยละซ้อน (เปลี่ยนแปลงหลายครั้ง)
+    prerequisites: [percent-change]
+  - id: profit-loss-discount
+    topic: percent
+    name: กำไร ขาดทุน ส่วนลด
+    prerequisites: [percent-change]
+  - id: interest
+    topic: percent
+    name: ดอกเบี้ยเชิงเดี่ยวและทบต้น
+    prerequisites: [successive-percent, exponents]
+
+  # ── เรขาคณิต ───────────────────────────────────────────────
+  - id: angles-lines
+    topic: geometry
+    name: มุม เส้นตรง และเส้นขนาน
+    prerequisites: [integer-operations]
+  - id: triangle-properties
+    topic: geometry
+    name: สมบัติของสามเหลี่ยมและผลรวมมุมภายใน
+    prerequisites: [angles-lines]
+  - id: pythagorean-theorem
+    topic: geometry
+    name: ทฤษฎีบทพีทาโกรัส
+    prerequisites: [roots, triangle-properties]
+  - id: special-right-triangles
+    topic: geometry
+    name: สามเหลี่ยมมุมฉากพิเศษ (30-60-90, 45-45-90)
+    prerequisites: [pythagorean-theorem]
+  - id: similar-triangles
+    topic: geometry
+    name: สามเหลี่ยมคล้าย
+    prerequisites: [triangle-properties, proportion]
+  - id: polygons
+    topic: geometry
+    name: รูปหลายเหลี่ยมและผลรวมมุมภายใน
+    prerequisites: [triangle-properties]
+  - id: perimeter-area
+    topic: geometry
+    name: เส้นรอบรูปและพื้นที่สามเหลี่ยม/สี่เหลี่ยม
+    prerequisites: [triangle-properties, fractions]
+  - id: circles
+    topic: geometry
+    name: วงกลม เส้นรอบวง พื้นที่ ส่วนโค้ง และเซกเตอร์
+    prerequisites: [perimeter-area]
+  - id: circle-angles
+    topic: geometry
+    name: มุมในวงกลมและเส้นสัมผัส
+    prerequisites: [circles, angles-lines]
+  - id: composite-area
+    topic: geometry
+    name: พื้นที่ส่วนที่แรเงาและรูปประกอบ
+    prerequisites: [perimeter-area, circles]
+  - id: volume-surface-area
+    topic: geometry
+    name: ปริมาตรและพื้นที่ผิวทรงสามมิติ
+    prerequisites: [perimeter-area, circles]
+
+  # ── เรขาคณิตวิเคราะห์ ──────────────────────────────────────
+  - id: coordinate-plane
+    topic: analytic-geometry
+    name: ระบบพิกัดฉาก
+    prerequisites: [integer-operations]
+  - id: distance-midpoint
+    topic: analytic-geometry
+    name: ระยะทางและจุดกึ่งกลางระหว่างสองจุด
+    prerequisites: [coordinate-plane, pythagorean-theorem]
+  - id: slope
+    topic: analytic-geometry
+    name: ความชัน
+    prerequisites: [coordinate-plane, fractions]
+  - id: line-equation
+    topic: analytic-geometry
+    name: สมการเส้นตรง
+    prerequisites: [slope, linear-equations]
+  - id: parallel-perpendicular
+    topic: analytic-geometry
+    name: เส้นขนานและเส้นตั้งฉาก
+    prerequisites: [line-equation]
+  - id: line-intersection
+    topic: analytic-geometry
+    name: จุดตัดของเส้นตรง
+    prerequisites: [line-equation, linear-systems]
+  - id: area-on-plane
+    topic: analytic-geometry
+    name: พื้นที่รูปหลายเหลี่ยมบนระนาบพิกัด
+    prerequisites: [distance-midpoint, line-intersection, perimeter-area]
+  - id: circle-equation
+    topic: analytic-geometry
+    name: สมการวงกลม
+    prerequisites: [distance-midpoint, quadratic-equations]
+
+  # ── ลำดับ อนุกรม ───────────────────────────────────────────
+  - id: sequence-patterns
+    topic: sequences-series
+    name: การหาแบบรูปของลำดับ
+    prerequisites: [integer-operations]
+  - id: arithmetic-sequence
+    topic: sequences-series
+    name: ลำดับเลขคณิต
+    prerequisites: [sequence-patterns, linear-equations]
+  - id: geometric-sequence
+    topic: sequences-series
+    name: ลำดับเรขาคณิต
+    prerequisites: [sequence-patterns, exponents]
+  - id: arithmetic-series
+    topic: sequences-series
+    name: อนุกรมเลขคณิต
+    prerequisites: [arithmetic-sequence]
+  - id: geometric-series
+    topic: sequences-series
+    name: อนุกรมเรขาคณิต
+    prerequisites: [geometric-sequence]
+  - id: infinite-geometric-series
+    topic: sequences-series
+    name: อนุกรมเรขาคณิตอนันต์
+    prerequisites: [geometric-series]
+
+  # ── สถิติ ──────────────────────────────────────────────────
+  - id: mean
+    topic: statistics
+    name: ค่าเฉลี่ยเลขคณิต
+    prerequisites: [integer-operations, fractions]
+  - id: weighted-mean
+    topic: statistics
+    name: ค่าเฉลี่ยถ่วงน้ำหนักและค่าเฉลี่ยรวม
+    prerequisites: [mean]
+  - id: median-mode
+    topic: statistics
+    name: มัธยฐานและฐานนิยม
+    prerequisites: [integer-operations]
+  - id: quartiles-percentiles
+    topic: statistics
+    name: ควอร์ไทล์และเปอร์เซ็นไทล์
+    prerequisites: [median-mode]
+  - id: dispersion
+    topic: statistics
+    name: พิสัย ส่วนเบี่ยงเบนมาตรฐาน ความแปรปรวน
+    prerequisites: [mean, roots]
+  - id: data-transformation-effect
+    topic: statistics
+    name: ผลของการเพิ่ม/ลด/คูณข้อมูลต่อค่าสถิติ
+    prerequisites: [mean, median-mode, dispersion]
+
+  # ── เซต ────────────────────────────────────────────────────
+  - id: set-basics
+    topic: sets
+    name: เซต สมาชิก และสับเซต
+    prerequisites: []
+  - id: subset-count
+    topic: sets
+    name: จำนวนสับเซตและเพาเวอร์เซต
+    prerequisites: [set-basics, exponents]
+  - id: set-operations
+    topic: sets
+    name: ยูเนียน อินเตอร์เซกชัน คอมพลีเมนต์ ผลต่าง
+    prerequisites: [set-basics]
+  - id: venn-two-sets
+    topic: sets
+    name: แผนภาพเวนน์และจำนวนสมาชิก 2 เซต
+    prerequisites: [set-operations]
+  - id: venn-three-sets
+    topic: sets
+    name: แผนภาพเวนน์และจำนวนสมาชิก 3 เซต
+    prerequisites: [venn-two-sets]
+
+  # ── การนับ ความน่าจะเป็น ───────────────────────────────────
+  - id: counting-principles
+    topic: counting-probability
+    name: หลักการบวกและหลักการคูณ
+    prerequisites: [integer-operations]
+  - id: factorial
+    topic: counting-probability
+    name: แฟกทอเรียล
+    prerequisites: [counting-principles]
+  - id: permutations
+    topic: counting-probability
+    name: การเรียงสับเปลี่ยน
+    prerequisites: [factorial]
+  - id: permutations-special
+    topic: counting-probability
+    name: เรียงสับเปลี่ยนของซ้ำและเรียงเป็นวงกลม
+    prerequisites: [permutations]
+  - id: combinations
+    topic: counting-probability
+    name: การจัดหมู่
+    prerequisites: [permutations]
+  - id: probability-basics
+    topic: counting-probability
+    name: ความน่าจะเป็นพื้นฐาน
+    prerequisites: [counting-principles, fractions, set-operations]
+  - id: probability-counting
+    topic: counting-probability
+    name: ความน่าจะเป็นที่ใช้การจัดหมู่/เรียงสับเปลี่ยน
+    prerequisites: [probability-basics, combinations]
+  - id: complement-at-least
+    topic: counting-probability
+    name: เหตุการณ์ตรงข้ามและโจทย์ "อย่างน้อย"
+    prerequisites: [probability-basics]
+  - id: independent-events
+    topic: counting-probability
+    name: เหตุการณ์อิสระ และการหยิบแบบคืน/ไม่คืน
+    prerequisites: [probability-basics]
+
+  # ── ของผสม ─────────────────────────────────────────────────
+  - id: concentration
+    topic: mixtures
+    name: ความเข้มข้นเป็นร้อยละ
+    prerequisites: [percent-of]
+  - id: mixing-solutions
+    topic: mixtures
+    name: การผสมสารละลายสองชนิด
+    prerequisites: [concentration, word-problem-translation, weighted-mean]
+  - id: dilution-evaporation
+    topic: mixtures
+    name: การเติมน้ำและการระเหย
+    prerequisites: [concentration, word-problem-translation]
+  - id: repeated-replacement
+    topic: mixtures
+    name: ตักออกแล้วเติมแทนซ้ำหลายครั้ง
+    prerequisites: [mixing-solutions, successive-percent]
+  - id: mixture-ratio
+    topic: mixtures
+    name: การผสมตามอัตราส่วน
+    prerequisites: [multi-ratio, dividing-in-ratio]
+
+  # ── การเคลื่อนที่ ───────────────────────────────────────────
+  - id: unit-conversion
+    topic: motion
+    name: การแปลงหน่วย (กม./ชม. ↔ ม./วินาที)
+    prerequisites: [ratio-basics]
+  - id: speed-distance-time
+    topic: motion
+    name: ความเร็ว ระยะทาง เวลา
+    prerequisites: [proportion, linear-equations]
+  - id: average-speed
+    topic: motion
+    name: ความเร็วเฉลี่ย
+    prerequisites: [speed-distance-time]
+  - id: relative-motion
+    topic: motion
+    name: การเคลื่อนที่สวนทางและไล่ตาม
+    prerequisites: [speed-distance-time, word-problem-translation]
+  - id: train-problems
+    topic: motion
+    name: รถไฟผ่านคน สะพาน หรือรถไฟอีกขบวน
+    prerequisites: [relative-motion]
+  - id: stream-problems
+    topic: motion
+    name: ตามน้ำและทวนน้ำ
+    prerequisites: [relative-motion, linear-systems]
+  - id: circular-track
+    topic: motion
+    name: การวิ่งรอบสนาม
+    prerequisites: [relative-motion, gcd-lcm]
+
+  # ── การทำงาน ───────────────────────────────────────────────
+  - id: work-rate
+    topic: work
+    name: อัตราการทำงาน (งานต่อหน่วยเวลา)
+    prerequisites: [fractions, inverse-variation]
+  - id: man-days
+    topic: work
+    name: คน-วัน และจำนวนคนกับเวลา
+    prerequisites: [rule-of-three]
+  - id: combined-work
+    topic: work
+    name: การทำงานร่วมกัน
+    prerequisites: [work-rate, word-problem-translation]
+  - id: work-in-stages
+    topic: work
+    name: เข้าหรือออกจากงานกลางคัน
+    prerequisites: [combined-work]
+  - id: pipes-tanks
+    topic: work
+    name: ท่อน้ำเข้าและท่อน้ำออก
+    prerequisites: [combined-work]
+
+  # ── ตาราง กราฟ ─────────────────────────────────────────────
+  - id: read-table
+    topic: tables-graphs
+    name: การอ่านข้อมูลจากตาราง
+    prerequisites: []
+  - id: read-bar-line
+    topic: tables-graphs
+    name: การอ่านกราฟแท่งและกราฟเส้น
+    prerequisites: [read-table]
+  - id: read-pie
+    topic: tables-graphs
+    name: การอ่านแผนภูมิวงกลม
+    prerequisites: [read-table, percent-of]
+  - id: chart-percent-change
+    topic: tables-graphs
+    name: เปรียบเทียบและหาร้อยละการเปลี่ยนแปลงจากกราฟ
+    prerequisites: [read-bar-line, percent-change, estimation]
+  - id: chart-multi-source
+    topic: tables-graphs
+    name: รวมข้อมูลจากหลายตาราง/กราฟ
+    prerequisites: [read-bar-line, read-pie, ratio-basics]

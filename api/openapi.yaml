@@ -1,0 +1,656 @@
+openapi: 3.0.3
+info:
+  title: Tutor Platform API
+  version: 0.1.0
+  description: |
+    REST API for the Learner-facing web app. Vocabulary follows CONTEXT.md.
+    Auth: opaque session cookie `tp_session`. State-changing requests must send a matching Origin header.
+    Answer keys and Explanations are never returned before the Learner has answered the Question.
+servers:
+  - url: /api
+security:
+  - session: []
+
+tags:
+  - name: auth
+  - name: courses
+  - name: progress
+  - name: sessions
+  - name: questions
+  - name: admin
+
+paths:
+  /auth/google/login:
+    get:
+      tags: [auth]
+      operationId: googleLogin
+      security: []
+      summary: Redirect to Google OIDC. Optional invite token is carried through the state.
+      parameters:
+        - { name: invite, in: query, required: false, schema: { type: string } }
+      responses:
+        "302": { description: Redirect to Google }
+  /auth/google/callback:
+    get:
+      tags: [auth]
+      operationId: googleCallback
+      security: []
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "302": { description: Session cookie set, redirect to web app }
+        "403": { $ref: "#/components/responses/Error" }
+  /auth/dev-login:
+    post:
+      tags: [auth]
+      operationId: devLogin
+      security: []
+      summary: Local dev and e2e only (AUTH_DEV_LOGIN=true). Creates the Learner if missing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                name: { type: string }
+      responses:
+        "204": { description: Session cookie set }
+        "404": { $ref: "#/components/responses/Error" }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      responses:
+        "204": { description: Logged out }
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      responses:
+        "200":
+          description: Current Learner
+          content: { application/json: { schema: { $ref: "#/components/schemas/Learner" } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /courses:
+    get:
+      tags: [courses]
+      operationId: listCourses
+      responses:
+        "200":
+          description: Courses
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CourseSummary" } }
+  /courses/{courseId}:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [courses]
+      operationId: getCourse
+      summary: Course with its full knowledge graph (Topics, active Concepts, Prerequisites).
+      responses:
+        "200":
+          description: Course graph
+          content: { application/json: { schema: { $ref: "#/components/schemas/CourseGraph" } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /courses/{courseId}/exams:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [courses]
+      operationId: listExams
+      responses:
+        "200":
+          description: Exams of the Course
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ExamSummary" } }
+  /concepts/{conceptId}:
+    parameters: [{ $ref: "#/components/parameters/ConceptId" }]
+    get:
+      tags: [courses]
+      operationId: getConcept
+      summary: Concept with its Lesson, Prerequisites, dependents and the Learner's Mastery.
+      responses:
+        "200":
+          description: Concept detail
+          content: { application/json: { schema: { $ref: "#/components/schemas/ConceptDetail" } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /courses/{courseId}/mastery:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [progress]
+      operationId: getMastery
+      summary: The current Learner's Mastery for every Concept in the Course (Mastery Map data).
+      responses:
+        "200":
+          description: Mastery per Concept
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Mastery" } }
+  /courses/{courseId}/recommendations:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [progress]
+      operationId: getRecommendations
+      summary: Recommendations ordered by Priority (first is the top Recommendation).
+      responses:
+        "200":
+          description: Recommendations
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
+  /courses/{courseId}/format-report:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [progress]
+      operationId: getFormatReport
+      responses:
+        "200":
+          description: Accuracy per Question Format
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FormatStat" } }
+  /courses/{courseId}/learning-path:
+    parameters: [{ $ref: "#/components/parameters/CourseId" }]
+    get:
+      tags: [progress]
+      operationId: getLearningPath
+      summary: The Learner's active Learning Path in this Course, if any.
+      responses:
+        "200":
+          description: Active Learning Path
+          content: { application/json: { schema: { $ref: "#/components/schemas/LearningPath" } } }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [progress]
+      operationId: startLearningPath
+      summary: Start a Learning Path from a Recommendation. Replaces any active one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rootConceptId, targetConceptId]
+              properties:
+                rootConceptId: { type: string, format: uuid }
+                targetConceptId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Started
+          content: { application/json: { schema: { $ref: "#/components/schemas/LearningPath" } } }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [progress]
+      operationId: abandonLearningPath
+      responses:
+        "204": { description: Abandoned }
+
+  /sessions:
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Start a Quiz, Diagnostic Quiz, Placement Test, or Exam.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateSessionRequest" } } }
+      responses:
+        "201":
+          description: Session started
+          content: { application/json: { schema: { $ref: "#/components/schemas/StudySession" } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /sessions/{sessionId}:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    get:
+      tags: [sessions]
+      operationId: getSession
+      responses:
+        "200":
+          description: Session state
+          content: { application/json: { schema: { $ref: "#/components/schemas/StudySession" } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /sessions/{sessionId}/next:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    get:
+      tags: [sessions]
+      operationId: getNextQuestion
+      summary: Next unanswered Question (no answer key). 204 when the session has no more Questions.
+      responses:
+        "200":
+          description: Question to answer
+          content: { application/json: { schema: { $ref: "#/components/schemas/ServedQuestion" } } }
+        "204": { description: No more Questions; call finish }
+        "410": { $ref: "#/components/responses/Error" }
+  /sessions/{sessionId}/answers:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      tags: [sessions]
+      operationId: submitAnswer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [questionId, choiceId]
+              properties:
+                questionId: { type: string, format: uuid }
+                choiceId: { type: string, format: uuid }
+                timeSpentMs: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Answer recorded. Feedback is present for non-Exam sessions only.
+          content: { application/json: { schema: { $ref: "#/components/schemas/AnswerResult" } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+  /sessions/{sessionId}/finish:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      tags: [sessions]
+      operationId: finishSession
+      responses:
+        "200":
+          description: Session result
+          content: { application/json: { schema: { $ref: "#/components/schemas/SessionResult" } } }
+  /sessions/{sessionId}/result:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    get:
+      tags: [sessions]
+      operationId: getSessionResult
+      responses:
+        "200":
+          description: Session result (finished sessions only)
+          content: { application/json: { schema: { $ref: "#/components/schemas/SessionResult" } } }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /questions/{questionId}/flags:
+    parameters: [{ $ref: "#/components/parameters/QuestionId" }]
+    post:
+      tags: [questions]
+      operationId: flagQuestion
+      summary: Flag a Question the Learner has answered. Pulls it for every Learner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 2000 }
+      responses:
+        "201": { description: Flagged }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /admin/invites:
+    get:
+      tags: [admin]
+      operationId: listInvites
+      responses:
+        "200":
+          description: Invites
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Invite" } }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [admin]
+      operationId: createInvite
+      responses:
+        "201":
+          description: Invite created; the token and URL are only returned once.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Invite"
+                  - type: object
+                    required: [url]
+                    properties:
+                      url: { type: string }
+        "403": { $ref: "#/components/responses/Error" }
+  /admin/learners:
+    get:
+      tags: [admin]
+      operationId: listLearners
+      responses:
+        "200":
+          description: Learners
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Learner" } }
+        "403": { $ref: "#/components/responses/Error" }
+  /admin/flags:
+    get:
+      tags: [admin]
+      operationId: listFlags
+      parameters:
+        - { name: open, in: query, required: false, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: Flags
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Flag" } }
+        "403": { $ref: "#/components/responses/Error" }
+  /admin/content-requests:
+    get:
+      tags: [admin]
+      operationId: listContentRequests
+      responses:
+        "200":
+          description: Open Content Requests
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ContentRequest" } }
+        "403": { $ref: "#/components/responses/Error" }
+  /admin/questions/{questionId}/retire:
+    parameters: [{ $ref: "#/components/parameters/QuestionId" }]
+    post:
+      tags: [admin]
+      operationId: retireQuestion
+      responses:
+        "204": { description: Retired }
+        "403": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: tp_session
+
+  parameters:
+    CourseId: { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+    ConceptId: { name: conceptId, in: path, required: true, schema: { type: string, format: uuid } }
+    SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    QuestionId: { name: questionId, in: path, required: true, schema: { type: string, format: uuid } }
+
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: not_found }
+        message: { type: string }
+
+    Learner:
+      type: object
+      required: [id, email, name, isOwner]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        isOwner: { type: boolean }
+        placementDone: { type: boolean }
+
+    Invite:
+      type: object
+      required: [id, createdAt, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        usedBy: { type: string, nullable: true }
+
+    CourseSummary:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        goal: { type: string }
+
+    Topic:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        examWeight: { type: number, nullable: true }
+
+    Concept:
+      type: object
+      required: [id, slug, name, topicId, prerequisiteIds]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        topicId: { type: string, format: uuid }
+        prerequisiteIds: { type: array, items: { type: string, format: uuid } }
+        hasLesson: { type: boolean }
+
+    CourseGraph:
+      allOf:
+        - $ref: "#/components/schemas/CourseSummary"
+        - type: object
+          required: [topics, concepts, questionFormats]
+          properties:
+            topics: { type: array, items: { $ref: "#/components/schemas/Topic" } }
+            concepts: { type: array, items: { $ref: "#/components/schemas/Concept" } }
+            questionFormats: { type: array, items: { $ref: "#/components/schemas/QuestionFormat" } }
+
+    QuestionFormat:
+      type: object
+      required: [slug, name]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+
+    ConceptDetail:
+      allOf:
+        - $ref: "#/components/schemas/Concept"
+        - type: object
+          required: [dependentIds, mastery]
+          properties:
+            topicName: { type: string }
+            lessonMd: { type: string, nullable: true }
+            dependentIds: { type: array, items: { type: string, format: uuid } }
+            mastery: { $ref: "#/components/schemas/Mastery" }
+            activeQuestionCount: { type: integer }
+
+    MasteryLevel:
+      type: string
+      enum: [unassessed, weak, developing, mastered]
+
+    Mastery:
+      type: object
+      required: [conceptId, score, evidence, level]
+      properties:
+        conceptId: { type: string, format: uuid }
+        score: { type: number, minimum: 0, maximum: 1 }
+        evidence: { type: number, description: Weighted amount of evidence behind the score }
+        level: { $ref: "#/components/schemas/MasteryLevel" }
+
+    Recommendation:
+      type: object
+      required: [kind, conceptId, conceptName, path, unblocks, priority]
+      properties:
+        kind:
+          type: string
+          enum: [study, diagnose]
+          description: study = learn the Root Cause; diagnose = take a Diagnostic Quiz on an Unassessed Prerequisite first
+        conceptId: { type: string, format: uuid, description: The Root Cause (study) or Concept to diagnose }
+        conceptName: { type: string }
+        targetConceptId: { type: string, format: uuid, description: The struggling Concept this Recommendation serves }
+        path:
+          type: array
+          description: The reason — Concept ids from conceptId up the Prerequisite chain to targetConceptId
+          items: { $ref: "#/components/schemas/ConceptRef" }
+        unblocks: { type: integer, description: Number of Weak Concepts downstream of conceptId }
+        priority: { type: number }
+
+    ConceptRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        level: { $ref: "#/components/schemas/MasteryLevel" }
+
+    LearningPath:
+      type: object
+      required: [id, courseId, steps, startedAt]
+      properties:
+        id: { type: string, format: uuid }
+        courseId: { type: string, format: uuid }
+        steps: { type: array, items: { $ref: "#/components/schemas/ConceptRef" } }
+        currentStepConceptId: { type: string, format: uuid, nullable: true, description: null when complete }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+
+    FormatStat:
+      type: object
+      required: [format, formatName, answered, correct, accuracy]
+      properties:
+        format: { type: string }
+        formatName: { type: string }
+        answered: { type: integer }
+        correct: { type: integer }
+        accuracy: { type: number }
+
+    ExamSummary:
+      type: object
+      required: [id, name, timeLimitSeconds, questionCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        timeLimitSeconds: { type: integer }
+        questionCount: { type: integer }
+        lastScore: { type: number, nullable: true }
+
+    SessionKind:
+      type: string
+      enum: [quiz, diagnostic, placement, exam]
+
+    CreateSessionRequest:
+      type: object
+      required: [kind, courseId]
+      properties:
+        kind: { $ref: "#/components/schemas/SessionKind" }
+        courseId: { type: string, format: uuid }
+        conceptId: { type: string, format: uuid, description: Required for diagnostic; quiz needs conceptId or topicId }
+        topicId: { type: string, format: uuid }
+        examId: { type: string, format: uuid, description: Required for exam }
+
+    StudySession:
+      type: object
+      required: [id, kind, courseId, answeredCount, startedAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/SessionKind" }
+        courseId: { type: string, format: uuid }
+        conceptId: { type: string, format: uuid, nullable: true }
+        topicId: { type: string, format: uuid, nullable: true }
+        examId: { type: string, format: uuid, nullable: true }
+        totalQuestions: { type: integer, nullable: true, description: null for adaptive Placement Tests }
+        answeredCount: { type: integer }
+        startedAt: { type: string, format: date-time }
+        deadline: { type: string, format: date-time, nullable: true }
+        finishedAt: { type: string, format: date-time, nullable: true }
+
+    ServedQuestion:
+      type: object
+      required: [id, stemMd, choices, format, position]
+      properties:
+        id: { type: string, format: uuid }
+        stemMd: { type: string }
+        format: { type: string }
+        difficulty: { type: integer, minimum: 1, maximum: 3 }
+        position: { type: integer, description: 1-based position in the session }
+        choices:
+          type: array
+          items:
+            type: object
+            required: [id, label, bodyMd]
+            properties:
+              id: { type: string, format: uuid }
+              label: { type: string, example: A }
+              bodyMd: { type: string }
+
+    AnswerResult:
+      type: object
+      required: [recorded]
+      properties:
+        recorded: { type: boolean }
+        correct: { type: boolean, nullable: true }
+        correctChoiceId: { type: string, format: uuid, nullable: true }
+        explanationMd: { type: string, nullable: true }
+        masteryChanges:
+          type: array
+          items:
+            type: object
+            required: [conceptId, conceptName, before, after]
+            properties:
+              conceptId: { type: string, format: uuid }
+              conceptName: { type: string }
+              before: { $ref: "#/components/schemas/MasteryLevel" }
+              after: { $ref: "#/components/schemas/MasteryLevel" }
+
+    SessionResult:
+      type: object
+      required: [sessionId, kind, answered, correct, topicBreakdown, rootCauses, review]
+      properties:
+        sessionId: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/SessionKind" }
+        answered: { type: integer }
+        correct: { type: integer }
+        total: { type: integer }
+        topicBreakdown:
+          type: array
+          items:
+            type: object
+            required: [topicId, topicName, answered, correct]
+            properties:
+              topicId: { type: string, format: uuid }
+              topicName: { type: string }
+              answered: { type: integer }
+              correct: { type: integer }
+        rootCauses: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
+        review:
+          type: array
+          description: Per-Question review incl. key and Explanation (all session kinds, after finish)
+          items:
+            type: object
+            required: [questionId, stemMd, chosenChoiceId, correctChoiceId, correct, explanationMd]
+            properties:
+              questionId: { type: string, format: uuid }
+              stemMd: { type: string }
+              chosenChoiceId: { type: string, format: uuid, nullable: true }
+              correctChoiceId: { type: string, format: uuid }
+              correct: { type: boolean }
+              explanationMd: { type: string }
+
+    Flag:
+      type: object
+      required: [id, questionId, reason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        questionId: { type: string, format: uuid }
+        learnerName: { type: string }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+
+    ContentRequest:
+      type: object
+      required: [id, conceptId, conceptName, reason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        conceptId: { type: string, format: uuid }
+        conceptName: { type: string }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
