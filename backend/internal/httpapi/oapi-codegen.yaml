@@ -1,0 +1,9 @@
+# Generates REST types + strict server from the contract (api/openapi.yaml).
+package: httpapi
+output: internal/httpapi/api.gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+output-options:
+  skip-prune: true
