@@ -187,9 +187,10 @@ flowchart LR
   proportion --> percent-of
   percent-of --> percent-change
   percent-change --> successive-percent
-  percent-change --> profit-loss-discount
+  successive-percent --> profit-loss-discount
   successive-percent --> interest
   exponents --> interest
+  geometric-sequence --> interest
   integer-operations --> angles-lines
   angles-lines --> triangle-properties
   roots --> pythagorean-theorem
@@ -222,7 +223,9 @@ flowchart LR
   perimeter-area --> area-on-plane
   distance-midpoint --> circle-equation
   quadratic-equations --> circle-equation
+  circles --> circle-equation
   integer-operations --> sequence-patterns
+  remainders --> sequence-patterns
   sequence-patterns --> arithmetic-sequence
   linear-equations --> arithmetic-sequence
   sequence-patterns --> geometric-sequence
@@ -242,6 +245,7 @@ flowchart LR
   dispersion --> data-transformation-effect
   set-basics --> subset-count
   exponents --> subset-count
+  combinations --> subset-count
   set-basics --> set-operations
   set-operations --> venn-two-sets
   venn-two-sets --> venn-three-sets
@@ -267,10 +271,13 @@ flowchart LR
   successive-percent --> repeated-replacement
   multi-ratio --> mixture-ratio
   dividing-in-ratio --> mixture-ratio
+  weighted-mean --> mixture-ratio
   ratio-basics --> unit-conversion
   proportion --> speed-distance-time
   linear-equations --> speed-distance-time
+  unit-conversion --> speed-distance-time
   speed-distance-time --> average-speed
+  weighted-mean --> average-speed
   speed-distance-time --> relative-motion
   word-problem-translation --> relative-motion
   relative-motion --> train-problems
@@ -290,8 +297,10 @@ flowchart LR
   percent-of --> read-pie
   read-bar-line --> chart-percent-change
   percent-change --> chart-percent-change
+  successive-percent --> chart-percent-change
   estimation --> chart-percent-change
   read-bar-line --> chart-multi-source
   read-pie --> chart-multi-source
   ratio-basics --> chart-multi-source
+  weighted-mean --> chart-multi-source
 ```

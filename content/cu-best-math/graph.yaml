@@ -190,11 +190,11 @@ concepts:
   - id: profit-loss-discount
     topic: percent
     name: กำไร ขาดทุน ส่วนลด
-    prerequisites: [percent-change]
+    prerequisites: [successive-percent]
   - id: interest
     topic: percent
     name: ดอกเบี้ยเชิงเดี่ยวและทบต้น
-    prerequisites: [successive-percent, exponents]
+    prerequisites: [successive-percent, exponents, geometric-sequence]
 
   # ── เรขาคณิต ───────────────────────────────────────────────
   - id: angles-lines
@@ -274,13 +274,13 @@ concepts:
   - id: circle-equation
     topic: analytic-geometry
     name: สมการวงกลม
-    prerequisites: [distance-midpoint, quadratic-equations]
+    prerequisites: [distance-midpoint, quadratic-equations, circles]
 
   # ── ลำดับ อนุกรม ───────────────────────────────────────────
   - id: sequence-patterns
     topic: sequences-series
     name: การหาแบบรูปของลำดับ
-    prerequisites: [integer-operations]
+    prerequisites: [integer-operations, remainders]
   - id: arithmetic-sequence
     topic: sequences-series
     name: ลำดับเลขคณิต
@@ -336,7 +336,7 @@ concepts:
   - id: subset-count
     topic: sets
     name: จำนวนสับเซตและเพาเวอร์เซต
-    prerequisites: [set-basics, exponents]
+    prerequisites: [set-basics, exponents, combinations]
   - id: set-operations
     topic: sets
     name: ยูเนียน อินเตอร์เซกชัน คอมพลีเมนต์ ผลต่าง
@@ -408,7 +408,7 @@ concepts:
   - id: mixture-ratio
     topic: mixtures
     name: การผสมตามอัตราส่วน
-    prerequisites: [multi-ratio, dividing-in-ratio]
+    prerequisites: [multi-ratio, dividing-in-ratio, weighted-mean]
 
   # ── การเคลื่อนที่ ───────────────────────────────────────────
   - id: unit-conversion
@@ -418,11 +418,11 @@ concepts:
   - id: speed-distance-time
     topic: motion
     name: ความเร็ว ระยะทาง เวลา
-    prerequisites: [proportion, linear-equations]
+    prerequisites: [proportion, linear-equations, unit-conversion]
   - id: average-speed
     topic: motion
     name: ความเร็วเฉลี่ย
-    prerequisites: [speed-distance-time]
+    prerequisites: [speed-distance-time, weighted-mean]
   - id: relative-motion
     topic: motion
     name: การเคลื่อนที่สวนทางและไล่ตาม
@@ -478,8 +478,8 @@ concepts:
   - id: chart-percent-change
     topic: tables-graphs
     name: เปรียบเทียบและหาร้อยละการเปลี่ยนแปลงจากกราฟ
-    prerequisites: [read-bar-line, percent-change, estimation]
+    prerequisites: [read-bar-line, percent-change, successive-percent, estimation]
   - id: chart-multi-source
     topic: tables-graphs
     name: รวมข้อมูลจากหลายตาราง/กราฟ
-    prerequisites: [read-bar-line, read-pie, ratio-basics]
+    prerequisites: [read-bar-line, read-pie, ratio-basics, weighted-mean]
