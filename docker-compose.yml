@@ -1,0 +1,89 @@
+# Local stack: PostgreSQL + Go backend (REST /api, MCP /mcp) + Next.js frontend.
+#
+#   make up                 # or: docker compose up -d --build
+#   make e2e                # adds docker-compose.e2e.yml (dev login on)
+#
+# Values come from .env (copy .env.example). Every variable has a safe dev default
+# here so `docker compose up` works without a .env file.
+
+name: tutor-platform
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tutor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tutor}
+      POSTGRES_DB: ${POSTGRES_DB:-tutor}
+    ports:
+      # Host 5433 avoids clashing with a locally installed Postgres on 5432.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: tutor-platform/backend:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-tutor}:${POSTGRES_PASSWORD:-tutor}@db:5432/${POSTGRES_DB:-tutor}?sslmode=disable
+      HTTP_ADDR: ":8080"
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:3000/api/auth/google/callback}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      AUTH_DEV_LOGIN: ${AUTH_DEV_LOGIN:-false}
+      MCP_TOKEN: ${MCP_TOKEN:-dev-mcp-token-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      # Exposed so a local Claude client can reach the MCP endpoint at http://localhost:8080/mcp.
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+    healthcheck:
+      # The server binary probes its own /readyz (which pings the DB); keeps the image distroless.
+      test: ["CMD", "/server", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* are inlined at build time, so they are build args as well as env.
+        NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING:-false}
+        NEXT_PUBLIC_DEV_LOGIN: ${NEXT_PUBLIC_DEV_LOGIN:-false}
+    image: tutor-platform/frontend:local
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:8080
+      NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING:-false}
+      NEXT_PUBLIC_DEV_LOGIN: ${NEXT_PUBLIC_DEV_LOGIN:-false}
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  pgdata:

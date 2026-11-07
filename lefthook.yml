@@ -1,0 +1,23 @@
+# Optional git hooks. Install: https://lefthook.dev  then `lefthook install`.
+# Kept fast: only staged files, no tests. CI is the real gate.
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      root: backend/
+      glob: "*.go"
+      run: gofmt -l {staged_files} | tee /dev/stderr | (! read)
+    eslint:
+      root: frontend/
+      glob: "*.{ts,tsx,js,mjs}"
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+    graph-check:
+      glob: "content/**/graph.yaml"
+      run: make graph-check && git diff --exit-code -- content
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: |
+        head -n1 {1} | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+' || {
+          echo "Commit message must follow Conventional Commits, e.g. 'feat(api): add learning path endpoint'"; exit 1; }

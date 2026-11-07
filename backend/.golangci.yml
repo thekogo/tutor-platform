@@ -1,0 +1,146 @@
+# golangci-lint v2 configuration. Run: golangci-lint run ./...  (or `make -C backend lint`)
+# Docs: https://golangci-lint.run/docs/configuration/file/
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # correctness
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - errorlint
+    - nilerr
+    - bodyclose
+    - sqlclosecheck
+    - rowserrcheck
+    - noctx
+    - contextcheck
+    - durationcheck
+    - copyloopvar
+    - exhaustive
+    - makezero
+    - wastedassign
+    # security
+    - gosec
+    # style / maintainability
+    - revive
+    - gocritic
+    - misspell
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - nolintlint
+    - errname
+    - predeclared
+    - forbidigo
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # noisy; struct layout is not a concern here
+        - shadow         # err shadowing is idiomatic
+    staticcheck:
+      checks: ["all", "-ST1000", "-ST1003"]
+    gosec:
+      excludes:
+        - G104 # duplicate of errcheck
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+          arguments: ["disableStutteringCheck"]
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: unused-parameter
+          disabled: true # handler signatures are fixed by generated interfaces
+    gocritic:
+      enabled-tags: [diagnostic, performance, style]
+      disabled-checks:
+        - hugeParam      # generated request/response structs are passed by value
+        - unnamedResult
+        - whyNoLint      # nolintlint already requires explanations
+        - paramTypeCombine # purely cosmetic
+    exhaustive:
+      default-signifies-exhaustive: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    misspell:
+      locale: US
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+          msg: use log/slog
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: use log/slog (fmt.Fprint* to an explicit writer is fine)
+      analyze-types: true
+
+  exclusions:
+    generated: strict # skips files with the standard "Code generated ... DO NOT EDIT." header
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+    paths:
+      # generated code (oapi-codegen, sqlc), belt and braces on top of `generated: strict`
+      - internal/store/db
+      - internal/store/sqlc
+      - ".*\\.gen\\.go$"
+      - ".*_gen\\.go$"
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+          - unparam
+          - noctx
+          - forbidigo
+      - path: cmd/
+        linters:
+          - forbidigo # CLIs may print to stdout
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/thekogo/tutor-platform
+  exclusions:
+    generated: strict
+    paths:
+      - ".*\\.gen\\.go$"
+      - ".*_gen\\.go$"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

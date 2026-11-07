@@ -1,0 +1,45 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Log in as a Learner
+        2. Open /concepts/...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web (frontend)
+        - REST API (backend)
+        - MCP / Content Admin agent
+        - Mastery / Recommendation engine
+        - Course content (graph, Questions, Lessons)
+        - Infra / CI
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Backend logs (`make logs`), browser console, screenshots. Redact tokens and emails.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Commit / version
+      placeholder: git rev-parse --short HEAD

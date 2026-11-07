@@ -1,0 +1,27 @@
+# E2E override: enables dev login so Playwright can sign in without Google.
+# NEVER use this in production.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+#
+# Uses a separate project name + volume so e2e data never mixes with your dev data.
+
+name: tutor-platform-e2e
+
+services:
+  backend:
+    environment:
+      AUTH_DEV_LOGIN: "true"
+      SESSION_COOKIE_SECURE: "false"
+      APP_BASE_URL: http://localhost:3000
+      MCP_TOKEN: e2e-mcp-token
+      LOG_LEVEL: debug
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_MOCKING: "false"
+        NEXT_PUBLIC_DEV_LOGIN: "true"
+    image: tutor-platform/frontend:e2e
+    environment:
+      NEXT_PUBLIC_API_MOCKING: "false"
+      NEXT_PUBLIC_DEV_LOGIN: "true"

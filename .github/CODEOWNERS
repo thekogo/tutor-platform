@@ -1,0 +1,8 @@
+# Default owner for everything. Later, more specific patterns take precedence.
+*                       @thekogo
+
+# Contract and domain language: changes here ripple through both sides.
+/api/openapi.yaml       @thekogo
+/CONTEXT.md             @thekogo
+/docs/adr/              @thekogo
+/.github/               @thekogo

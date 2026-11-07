@@ -130,6 +130,8 @@ func Recommend(g *Graph, mastery map[ConceptID]Mastery) []Recommendation {
 						Target:  target,
 						Path:    append([]ConceptID{p}, up(n)...),
 					})
+				case Developing, Mastered:
+					// not a gap: the search stops here
 				}
 			}
 			if !blocked {
