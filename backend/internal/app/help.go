@@ -45,9 +45,10 @@ type HelpConfig struct {
 }
 
 type helpState struct {
-	cfg  HelpConfig
-	mu   sync.Mutex
-	hits map[uuid.UUID][]time.Time
+	cfg   HelpConfig
+	mu    sync.Mutex
+	hits  map[uuid.UUID][]time.Time
+	swept time.Time // last prune of expired Learners
 }
 
 // SetHelp enables the Tutor Chat (nil Model disables it).
@@ -73,6 +74,16 @@ func (h *helpState) allow(learner uuid.UUID, now time.Time) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	cutoff := now.Add(-helpRateLimitWindow)
+	// Drop Learners whose whole budget has expired, so the map stays bounded
+	// by recent users rather than everyone who ever used the Tutor Chat.
+	if now.Sub(h.swept) >= helpRateLimitWindow {
+		for id, ts := range h.hits {
+			if len(ts) == 0 || !ts[len(ts)-1].After(cutoff) {
+				delete(h.hits, id)
+			}
+		}
+		h.swept = now
+	}
 	kept := h.hits[learner][:0]
 	for _, t := range h.hits[learner] {
 		if t.After(cutoff) {
