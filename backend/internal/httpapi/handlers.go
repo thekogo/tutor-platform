@@ -364,7 +364,9 @@ func (s *Server) GetNextQuestion(ctx context.Context, req GetNextQuestionRequest
 	if q == nil {
 		return GetNextQuestion204Response{}, nil
 	}
-	out := GetNextQuestion200JSONResponse{Id: q.ID, StemMd: q.StemMd, Format: q.Format, Difficulty: &q.Difficulty, Position: q.Position}
+	out := GetNextQuestion200JSONResponse{
+		Id: q.ID, StemMd: q.StemMd, Format: q.Format, Difficulty: &q.Difficulty, Position: q.Position, HelpAvailable: &q.HelpAvailable,
+	}
 	out.Choices = make([]struct {
 		BodyMd string             `json:"bodyMd"`
 		Id     openapi_types.UUID `json:"id"`
@@ -378,6 +380,26 @@ func (s *Server) GetNextQuestion(ctx context.Context, req GetNextQuestionRequest
 		}{BodyMd: c.BodyMd, Id: c.ID, Label: c.Label})
 	}
 	return out, nil
+}
+
+// AskQuestionHelp answers a Tutor Chat message about a Question in a Quiz.
+func (s *Server) AskQuestionHelp(ctx context.Context, req AskQuestionHelpRequestObject) (AskQuestionHelpResponseObject, error) {
+	a, err := actorFrom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, app.E(app.KindBadRequest, "bad_request", "body required")
+	}
+	msgs := make([]app.HelpMessage, 0, len(req.Body.Messages))
+	for _, m := range req.Body.Messages {
+		msgs = append(msgs, app.HelpMessage{Role: string(m.Role), Content: m.Content})
+	}
+	reply, err := s.app.AskHelp(ctx, a, app.AskHelpInput{SessionID: req.SessionId, QuestionID: req.QuestionId, Messages: msgs})
+	if err != nil {
+		return nil, err
+	}
+	return AskQuestionHelp200JSONResponse{Reply: reply}, nil
 }
 
 // SubmitAnswer records an Answer.

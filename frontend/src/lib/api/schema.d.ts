@@ -342,6 +342,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessions/{sessionId}/questions/{questionId}/help": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: components["parameters"]["SessionId"];
+                questionId: components["parameters"]["QuestionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutor Chat — ask the AI tutor for a hint on a Question in an open Quiz.
+         * @description Stateless: send the whole conversation so far (oldest first); the last message must be the
+         *     Learner's. The server adds the Question, its answer key and Explanation as confidential
+         *     context for the model, which is instructed to guide without revealing them. Only available
+         *     when the served Question has `helpAvailable: true` (Quizzes only). Rate limited per Learner.
+         */
+        post: operations["askQuestionHelp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/questions/{questionId}/flags": {
         parameters: {
             query?: never;
@@ -629,6 +655,8 @@ export interface components {
             difficulty?: number;
             /** @description 1-based position in the session */
             position: number;
+            /** @description Whether the Tutor Chat can be opened on this Question (Quizzes only */
+            helpAvailable?: boolean;
             choices: {
                 /** Format: uuid */
                 id: string;
@@ -636,6 +664,18 @@ export interface components {
                 label: string;
                 bodyMd: string;
             }[];
+        };
+        HelpMessage: {
+            /** @enum {string} */
+            role: "user" | "assistant";
+            content: string;
+        };
+        HelpRequest: {
+            messages: components["schemas"]["HelpMessage"][];
+        };
+        HelpReply: {
+            /** @description Markdown with $...$ math */
+            reply: string;
         };
         AnswerResult: {
             recorded: boolean;
@@ -1218,6 +1258,40 @@ export interface operations {
                 };
             };
             409: components["responses"]["Error"];
+        };
+    };
+    askQuestionHelp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: components["parameters"]["SessionId"];
+                questionId: components["parameters"]["QuestionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HelpRequest"];
+            };
+        };
+        responses: {
+            /** @description The tutor's reply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HelpReply"];
+                };
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            410: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     flagQuestion: {

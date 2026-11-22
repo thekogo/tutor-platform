@@ -5,6 +5,7 @@
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import type {
   AnswerResult,
+  HelpReply,
   ApiError,
   ConceptDetail,
   ConceptRef,
@@ -424,6 +425,7 @@ export const handlers = [
       format: q.format,
       difficulty: q.difficulty,
       position: idx + 1,
+      helpAvailable: s.kind === "quiz",
       choices: q.choices.map(({ id, label, bodyMd }) => ({ id, label, bodyMd })),
     });
   }),
@@ -449,6 +451,22 @@ export const handlers = [
       correctChoiceId: q.choices.find((c) => c.correct)!.id,
       explanationMd: q.explanationMd,
       masteryChanges: changes,
+    });
+  }),
+  http.post(api("/sessions/:sessionId/questions/:questionId/help"), async ({ cookies, params, request }) => {
+    const me = currentLearner(cookies);
+    if (!me) return unauthorized();
+    const s = ownSession(String(params.sessionId), me);
+    if (!s) return notFound("ไม่พบชุดคำถามนี้");
+    if (s.kind !== "quiz") return error(403, "help_not_allowed", "ใช้ติวเตอร์ AI ได้เฉพาะในควิซ");
+    if (s.finishedAt) return error(410, "session_finished", "ชุดคำถามนี้จบแล้ว");
+    if (!s.questionIds.includes(String(params.questionId))) return error(409, "not_in_session", "โจทย์นี้ไม่อยู่ในชุดคำถาม");
+    const body = (await request.json()) as { messages?: { role: string; content: string }[] };
+    const turns = body.messages ?? [];
+    if (turns.length === 0 || turns.at(-1)?.role !== "user") return error(422, "invalid_messages", "ข้อความไม่ถูกต้อง");
+    const n = turns.filter((m) => m.role === "user").length;
+    return json<HelpReply>({
+      reply: n === 1 ? "ลองดูว่าโจทย์ถามหาอะไร แล้วมีข้อมูลอะไรให้มาบ้าง?" : "ดีมาก! ขั้นต่อไปคุณคิดว่าควรใช้สูตรไหน?",
     });
   }),
   http.post(api("/sessions/:sessionId/finish"), ({ cookies, params }) => {

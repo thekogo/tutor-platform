@@ -35,6 +35,7 @@ export const T = {
   learners: "ผู้เรียน",
   owner: "เจ้าของระบบ",
   invite: "คำเชิญ",
+  tutorChat: "ติวเตอร์ AI",
 } as const;
 
 export const MASTERY_LEVEL_LABEL: Record<MasteryLevel, string> = {

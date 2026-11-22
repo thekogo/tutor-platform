@@ -59,6 +59,8 @@ type ServedQuestion struct {
 	Position   int
 	IsRepeat   bool
 	Choices    []ServedChoice
+	// HelpAvailable says whether the Tutor Chat may be opened on this Question.
+	HelpAvailable bool
 }
 
 // MasteryChangeView is a level change caused by an Answer.
@@ -295,11 +297,13 @@ func (s *Service) checkOpen(sess store.StudySession) error {
 // NextQuestion returns the next unanswered Question, or nil when there are no more.
 func (s *Service) NextQuestion(ctx context.Context, a Actor, id uuid.UUID) (*ServedQuestion, error) {
 	var served *ServedQuestion
+	var sessKind string
 	err := s.tx(ctx, func(q *store.Queries) error {
 		sess, err := s.loadSession(ctx, q, a, id, true, true)
 		if err != nil {
 			return err
 		}
+		sessKind = sess.Kind
 		if err := s.checkOpen(sess); err != nil {
 			return err
 		}
@@ -339,6 +343,9 @@ func (s *Service) NextQuestion(ctx context.Context, a Actor, id uuid.UUID) (*Ser
 		}
 		return nil
 	})
+	if served != nil && sessKind != "" {
+		served.HelpAvailable = s.HelpAvailable(sessKind)
+	}
 	return served, err
 }
 

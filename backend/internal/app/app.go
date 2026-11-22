@@ -45,6 +45,8 @@ type Service struct {
 
 	mu     sync.RWMutex
 	graphs map[uuid.UUID]*CourseGraph
+
+	help *helpState // Tutor Chat; nil = disabled (see SetHelp)
 }
 
 // New builds a Service.
@@ -81,14 +83,15 @@ func (s *Service) tx(ctx context.Context, fn func(q *store.Queries) error) error
 type Kind int
 
 const (
-	KindInvalid      Kind = iota + 1 // 422
-	KindBadRequest                   // 400
-	KindUnauthorized                 // 401
-	KindForbidden                    // 403
-	KindNotFound                     // 404
-	KindConflict                     // 409
-	KindGone                         // 410
-	KindUnavailable                  // 503
+	KindInvalid         Kind = iota + 1 // 422
+	KindBadRequest                      // 400
+	KindUnauthorized                    // 401
+	KindForbidden                       // 403
+	KindNotFound                        // 404
+	KindConflict                        // 409
+	KindGone                            // 410
+	KindUnavailable                     // 503
+	KindTooManyRequests                 // 429
 )
 
 // Error is an expected, client-facing error.

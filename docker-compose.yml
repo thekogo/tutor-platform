@@ -49,6 +49,13 @@ services:
       AUTH_DEV_LOGIN: ${AUTH_DEV_LOGIN:-false}
       MCP_TOKEN: ${MCP_TOKEN:-dev-mcp-token-change-me}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TIMEOUT: ${AI_TIMEOUT:-25s}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-800}
+      AI_HELP_PER_HOUR: ${AI_HELP_PER_HOUR:-30}
+      AI_EXTRA_BODY: ${AI_EXTRA_BODY:-}
     ports:
       # Exposed so a local Claude client can reach the MCP endpoint at http://localhost:8080/mcp.
       - "${BACKEND_HOST_PORT:-8080}:8080"

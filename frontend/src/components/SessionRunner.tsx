@@ -10,6 +10,7 @@ import { Countdown } from "./Countdown";
 import { FlagDialog } from "./FlagDialog";
 import { Markdown } from "./Markdown";
 import { MasteryChip } from "./MasteryChip";
+import { TutorChat } from "./TutorChat";
 
 type Phase = "loading" | "answering" | "submitting" | "feedback" | "finishing" | "error";
 
@@ -22,6 +23,7 @@ type Props = {
 /**
  * One Question at a time.
  * - Quiz / Diagnostic / Placement: immediate feedback, Explanation, Mastery changes, Flag.
+ * - Tutor Chat under the Question when the server offers it (`helpAvailable`, Quizzes only).
  * - Exam: countdown to the server deadline, NO feedback until finish, auto-finish at deadline.
  */
 export function SessionRunner({ session, title }: Props) {
@@ -310,6 +312,10 @@ export function SessionRunner({ session, title }: Props) {
             </div>
           )}
         </form>
+      )}
+
+      {question?.helpAvailable && (phase === "answering" || phase === "submitting" || phase === "feedback") && (
+        <TutorChat key={question.id} sessionId={session.id} questionId={question.id} />
       )}
 
       {flagOpen && question && (
