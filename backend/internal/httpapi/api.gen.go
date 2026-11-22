@@ -21,6 +21,24 @@ const (
 	SessionScopes = "session.Scopes"
 )
 
+// Defines values for HelpMessageRole.
+const (
+	Assistant HelpMessageRole = "assistant"
+	User      HelpMessageRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the HelpMessageRole enum.
+func (e HelpMessageRole) Valid() bool {
+	switch e {
+	case Assistant:
+		return true
+	case User:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MasteryLevel.
 const (
 	Developing MasteryLevel = "developing"
@@ -207,6 +225,26 @@ type FormatStat struct {
 	FormatName string  `json:"formatName"`
 }
 
+// HelpMessage defines model for HelpMessage.
+type HelpMessage struct {
+	Content string          `json:"content"`
+	Role    HelpMessageRole `json:"role"`
+}
+
+// HelpMessageRole defines model for HelpMessage.Role.
+type HelpMessageRole string
+
+// HelpReply defines model for HelpReply.
+type HelpReply struct {
+	// Reply Markdown with $...$ math
+	Reply string `json:"reply"`
+}
+
+// HelpRequest defines model for HelpRequest.
+type HelpRequest struct {
+	Messages []HelpMessage `json:"messages"`
+}
+
 // Invite defines model for Invite.
 type Invite struct {
 	CreatedAt time.Time          `json:"createdAt"`
@@ -285,9 +323,12 @@ type ServedQuestion struct {
 		Id     openapi_types.UUID `json:"id"`
 		Label  string             `json:"label"`
 	} `json:"choices"`
-	Difficulty *int               `json:"difficulty,omitempty"`
-	Format     string             `json:"format"`
-	Id         openapi_types.UUID `json:"id"`
+	Difficulty *int   `json:"difficulty,omitempty"`
+	Format     string `json:"format"`
+
+	// HelpAvailable Whether the Tutor Chat can be opened on this Question (Quizzes only
+	HelpAvailable *bool              `json:"helpAvailable,omitempty"`
+	Id            openapi_types.UUID `json:"id"`
 
 	// Position 1-based position in the session
 	Position int    `json:"position"`
@@ -415,6 +456,9 @@ type CreateSessionJSONRequestBody = CreateSessionRequest
 // SubmitAnswerJSONRequestBody defines body for SubmitAnswer for application/json ContentType.
 type SubmitAnswerJSONRequestBody SubmitAnswerJSONBody
 
+// AskQuestionHelpJSONRequestBody defines body for AskQuestionHelp for application/json ContentType.
+type AskQuestionHelpJSONRequestBody = HelpRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
@@ -498,6 +542,9 @@ type ServerInterface interface {
 	// Next unanswered Question (no answer key). 204 when the session has no more Questions.
 	// (GET /sessions/{sessionId}/next)
 	GetNextQuestion(w http.ResponseWriter, r *http.Request, sessionId SessionId)
+	// Tutor Chat — ask the AI tutor for a hint on a Question in an open Quiz.
+	// (POST /sessions/{sessionId}/questions/{questionId}/help)
+	AskQuestionHelp(w http.ResponseWriter, r *http.Request, sessionId SessionId, questionId QuestionId)
 
 	// (GET /sessions/{sessionId}/result)
 	GetSessionResult(w http.ResponseWriter, r *http.Request, sessionId SessionId)
@@ -1260,6 +1307,46 @@ func (siw *ServerInterfaceWrapper) GetNextQuestion(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// AskQuestionHelp operation middleware
+func (siw *ServerInterfaceWrapper) AskQuestionHelp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId SessionId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "questionId" -------------
+	var questionId QuestionId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "questionId", r.PathValue("questionId"), &questionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "questionId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AskQuestionHelp(w, r, sessionId, questionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetSessionResult operation middleware
 func (siw *ServerInterfaceWrapper) GetSessionResult(w http.ResponseWriter, r *http.Request) {
 
@@ -1438,6 +1525,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/sessions/{sessionId}/answers", wrapper.SubmitAnswer)
 	m.HandleFunc("POST "+options.BaseURL+"/sessions/{sessionId}/finish", wrapper.FinishSession)
 	m.HandleFunc("GET "+options.BaseURL+"/sessions/{sessionId}/next", wrapper.GetNextQuestion)
+	m.HandleFunc("POST "+options.BaseURL+"/sessions/{sessionId}/questions/{questionId}/help", wrapper.AskQuestionHelp)
 	m.HandleFunc("GET "+options.BaseURL+"/sessions/{sessionId}/result", wrapper.GetSessionResult)
 
 	return m
@@ -2087,6 +2175,88 @@ func (response GetNextQuestion410JSONResponse) VisitGetNextQuestionResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type AskQuestionHelpRequestObject struct {
+	SessionId  SessionId  `json:"sessionId"`
+	QuestionId QuestionId `json:"questionId"`
+	Body       *AskQuestionHelpJSONRequestBody
+}
+
+type AskQuestionHelpResponseObject interface {
+	VisitAskQuestionHelpResponse(w http.ResponseWriter) error
+}
+
+type AskQuestionHelp200JSONResponse HelpReply
+
+func (response AskQuestionHelp200JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp403JSONResponse struct{ ErrorJSONResponse }
+
+func (response AskQuestionHelp403JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp404JSONResponse Error
+
+func (response AskQuestionHelp404JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp409JSONResponse Error
+
+func (response AskQuestionHelp409JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp410JSONResponse Error
+
+func (response AskQuestionHelp410JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(410)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp422JSONResponse Error
+
+func (response AskQuestionHelp422JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp429JSONResponse Error
+
+func (response AskQuestionHelp429JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskQuestionHelp503JSONResponse Error
+
+func (response AskQuestionHelp503JSONResponse) VisitAskQuestionHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetSessionResultRequestObject struct {
 	SessionId SessionId `json:"sessionId"`
 }
@@ -2196,6 +2366,9 @@ type StrictServerInterface interface {
 	// Next unanswered Question (no answer key). 204 when the session has no more Questions.
 	// (GET /sessions/{sessionId}/next)
 	GetNextQuestion(ctx context.Context, request GetNextQuestionRequestObject) (GetNextQuestionResponseObject, error)
+	// Tutor Chat — ask the AI tutor for a hint on a Question in an open Quiz.
+	// (POST /sessions/{sessionId}/questions/{questionId}/help)
+	AskQuestionHelp(ctx context.Context, request AskQuestionHelpRequestObject) (AskQuestionHelpResponseObject, error)
 
 	// (GET /sessions/{sessionId}/result)
 	GetSessionResult(ctx context.Context, request GetSessionResultRequestObject) (GetSessionResultResponseObject, error)
@@ -2942,6 +3115,40 @@ func (sh *strictHandler) GetNextQuestion(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetNextQuestionResponseObject); ok {
 		if err := validResponse.VisitGetNextQuestionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AskQuestionHelp operation middleware
+func (sh *strictHandler) AskQuestionHelp(w http.ResponseWriter, r *http.Request, sessionId SessionId, questionId QuestionId) {
+	var request AskQuestionHelpRequestObject
+
+	request.SessionId = sessionId
+	request.QuestionId = questionId
+
+	var body AskQuestionHelpJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AskQuestionHelp(ctx, request.(AskQuestionHelpRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AskQuestionHelp")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AskQuestionHelpResponseObject); ok {
+		if err := validResponse.VisitAskQuestionHelpResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

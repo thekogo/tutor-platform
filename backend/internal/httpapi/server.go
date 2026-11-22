@@ -102,6 +102,8 @@ func statusFor(k app.Kind) int {
 		return http.StatusGone
 	case app.KindUnavailable:
 		return http.StatusServiceUnavailable
+	case app.KindTooManyRequests:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}

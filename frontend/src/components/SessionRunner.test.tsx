@@ -80,6 +80,58 @@ describe("SessionRunner — Quiz", () => {
   });
 });
 
+describe("SessionRunner — Tutor Chat", () => {
+  it("lets the Learner chat with the tutor about a Quiz Question", async () => {
+    const user = userEvent.setup();
+    const session = await createSession({ kind: "quiz", conceptId: conceptId("percent-of") });
+    let sent: unknown;
+    server.use(
+      http.post("*/api/sessions/:id/questions/:qid/help", async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ reply: "ลองหา **ส่วนต่าง** ก่อน" });
+      }),
+    );
+    render(<SessionRunner session={session} />);
+    await screen.findByTestId("question");
+
+    await user.click(screen.getByTestId("tutor-chat-open"));
+    const input = screen.getByTestId("tutor-chat-input");
+    expect(input).toHaveFocus();
+    await user.type(input, "เริ่มยังไงดี{Enter}");
+
+    expect(await screen.findByTestId("tutor-chat-reply")).toHaveTextContent("ลองหา ส่วนต่าง ก่อน");
+    expect(screen.getByTestId("tutor-chat-user")).toHaveTextContent("เริ่มยังไงดี");
+    expect(sent).toEqual({ messages: [{ role: "user", content: "เริ่มยังไงดี" }] });
+    expect(input).toHaveValue("");
+  });
+
+  it("keeps the draft and shows the error when the tutor fails", async () => {
+    const user = userEvent.setup();
+    const session = await createSession({ kind: "quiz", conceptId: conceptId("percent-of") });
+    server.use(
+      http.post("*/api/sessions/:id/questions/:qid/help", () =>
+        HttpResponse.json({ code: "help_rate_limited", message: "ใช้เกินโควตา" }, { status: 429 }),
+      ),
+    );
+    render(<SessionRunner session={session} />);
+    await screen.findByTestId("question");
+    await user.click(screen.getByTestId("tutor-chat-open"));
+    await user.type(screen.getByTestId("tutor-chat-input"), "ช่วยหน่อย");
+    await user.click(screen.getByTestId("tutor-chat-send"));
+
+    expect(await within(screen.getByTestId("tutor-chat")).findByRole("alert")).toHaveTextContent("ใช้เกินโควตา");
+    expect(screen.getByTestId("tutor-chat-input")).toHaveValue("ช่วยหน่อย");
+    expect(screen.queryByTestId("tutor-chat-user")).toBeNull();
+  });
+
+  it("is not offered in an Exam", async () => {
+    const session = await createSession({ kind: "exam", examId: EXAMS[0].id });
+    render(<SessionRunner session={session} />);
+    await screen.findByTestId("question");
+    expect(screen.queryByTestId("tutor-chat-open")).toBeNull();
+  });
+});
+
 describe("SessionRunner — Exam", () => {
   it("never shows feedback before the Exam is finished", async () => {
     const user = userEvent.setup();

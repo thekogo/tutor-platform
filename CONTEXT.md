@@ -45,6 +45,10 @@ _Avoid_: Origin, provenance
 The worked solution to a Question, shown to the Learner after they answer.
 _Avoid_: Solution, answer key
 
+**Tutor Chat**:
+An AI conversation a Learner can open on a Question in a Quiz to get hints. The AI sees the answer key and Explanation as private context but is instructed to guide, never to reveal them. Not offered in Exams, Diagnostic Quizzes or Placement Tests, which measure Mastery.
+_Avoid_: Chatbot, AI help, hint bot
+
 **Question Format**:
 The presentation style of a Question (e.g. standard, data sufficiency, out-of-the-box), independent of the Concepts it tests.
 _Avoid_: Question type

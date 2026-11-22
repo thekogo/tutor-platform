@@ -269,6 +269,34 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/SessionResult" } } }
         "409": { $ref: "#/components/responses/Error" }
 
+  /sessions/{sessionId}/questions/{questionId}/help:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+      - { $ref: "#/components/parameters/QuestionId" }
+    post:
+      tags: [sessions]
+      operationId: askQuestionHelp
+      summary: Tutor Chat — ask the AI tutor for a hint on a Question in an open Quiz.
+      description: |
+        Stateless: send the whole conversation so far (oldest first); the last message must be the
+        Learner's. The server adds the Question, its answer key and Explanation as confidential
+        context for the model, which is instructed to guide without revealing them. Only available
+        when the served Question has `helpAvailable: true` (Quizzes only). Rate limited per Learner.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HelpRequest" } } }
+      responses:
+        "200":
+          description: The tutor's reply
+          content: { application/json: { schema: { $ref: "#/components/schemas/HelpReply" } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+
   /questions/{questionId}/flags:
     parameters: [{ $ref: "#/components/parameters/QuestionId" }]
     post:
@@ -571,6 +599,7 @@ components:
         format: { type: string }
         difficulty: { type: integer, minimum: 1, maximum: 3 }
         position: { type: integer, description: 1-based position in the session }
+        helpAvailable: { type: boolean, description: Whether the Tutor Chat can be opened on this Question (Quizzes only, when configured) }
         choices:
           type: array
           items:
@@ -580,6 +609,29 @@ components:
               id: { type: string, format: uuid }
               label: { type: string, example: A }
               bodyMd: { type: string }
+
+    HelpMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string, minLength: 1, maxLength: 4000 }
+
+    HelpRequest:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/HelpMessage" }
+
+    HelpReply:
+      type: object
+      required: [reply]
+      properties:
+        reply: { type: string, description: Markdown with $...$ math }
 
     AnswerResult:
       type: object

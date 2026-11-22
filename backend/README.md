@@ -16,6 +16,7 @@ Design: [`../docs/architecture.md`](../docs/architecture.md). Vocabulary: [`../C
 | `internal/httpapi` | oapi-codegen strict server (`api.gen.go`), thin handlers, middleware |
 | `internal/mcpserver` | MCP tools (official go-sdk), streamable HTTP, bearer auth |
 | `internal/auth` | Google OIDC (invite-only), dev login, sessions, invites |
+| `internal/llm` | OpenAI-compatible chat completions client (Tutor Chat) |
 | `internal/seed` | graph.yaml import (shared by `cmd/seed` and `server seed`) |
 | `internal/testutil` | real-Postgres test databases and fixtures |
 
@@ -54,6 +55,11 @@ server healthcheck               GET http://127.0.0.1:<HTTP_ADDR port>/readyz, e
 | `AUTH_DEV_LOGIN` | `false` | enables `POST /api/auth/dev-login` (dev/e2e only) |
 | `MCP_TOKEN` | — | bearer token for `/mcp`; empty disables MCP (503) |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `AI_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | — | Tutor Chat via any OpenAI-compatible gateway (`POST <AI_BASE_URL>/chat/completions`); disabled unless all are set |
+| `AI_TIMEOUT` | `25s` | per model call; keep under the 30s API/proxy timeout |
+| `AI_MAX_TOKENS` | `800` | |
+| `AI_HELP_PER_HOUR` | `30` | Tutor Chat messages per Learner per rolling hour |
+| `AI_EXTRA_BODY` | — | JSON object merged into each request body (e.g. Z.AI `{"thinking":{"type":"disabled"}}`) |
 
 ## Tests
 

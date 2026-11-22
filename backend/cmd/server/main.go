@@ -25,6 +25,7 @@ import (
 	"github.com/thekogo/tutor-platform/backend/internal/app"
 	"github.com/thekogo/tutor-platform/backend/internal/auth"
 	"github.com/thekogo/tutor-platform/backend/internal/httpapi"
+	"github.com/thekogo/tutor-platform/backend/internal/llm"
 	"github.com/thekogo/tutor-platform/backend/internal/mcpserver"
 	"github.com/thekogo/tutor-platform/backend/internal/seed"
 	"github.com/thekogo/tutor-platform/backend/internal/store"
@@ -96,6 +97,15 @@ func serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 		return err
 	}
 	svc := app.New(pool, log)
+	if m := llm.New(llm.Config{
+		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel,
+		Timeout: cfg.AITimeout, MaxTokens: cfg.AIMaxTokens, ExtraBody: cfg.AIExtraBody,
+	}); m != nil {
+		svc.SetHelp(app.HelpConfig{Model: m, MaxPerHour: cfg.AIHelpPerHour, CallTimeout: cfg.AITimeout})
+		log.Info("Tutor Chat enabled", "ai_base_url", cfg.AIBaseURL, "ai_model", cfg.AIModel)
+	} else {
+		log.Warn("Tutor Chat disabled: AI_BASE_URL/AI_API_KEY/AI_MODEL not set")
+	}
 
 	var idp auth.IdentityProvider
 	if g := auth.NewGoogle(auth.GoogleConfig{

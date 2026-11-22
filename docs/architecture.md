@@ -22,7 +22,7 @@ Vocabulary follows [CONTEXT.md](../CONTEXT.md). Decisions with lasting trade-off
 ```
 
 - **One Go binary** serves the REST API (`/api/*`), the MCP endpoint (`/mcp`), and health probes (`/healthz`, `/readyz`). Both transports call the same `app` services; neither contains business logic.
-- **The platform never calls an LLM.** All content generation and the independent verification pass are done by the Owner's AI agent through MCP tools (ADR 0003).
+- **The platform calls an LLM for one thing only: the Tutor Chat** (ADR 0004). All content generation and the independent verification pass are still done by the Owner's AI agent through MCP tools (ADR 0003).
 - **Contract-first.** `api/openapi.yaml` is the source of truth for REST. The backend implements it (oapi-codegen strict server); the frontend consumes generated types (openapi-typescript). Changing the API means changing the spec first.
 
 ## Repository layout
@@ -38,6 +38,7 @@ backend/
   internal/httpapi/         oapi-codegen generated server + handlers, auth middleware
   internal/mcpserver/       MCP tools (modelcontextprotocol/go-sdk) → app services
   internal/auth/            Google OIDC, sessions, invites
+  internal/llm/             OpenAI-compatible chat completions client (Tutor Chat)
 frontend/                   Next.js (App Router, TypeScript, Tailwind)
 content/<course>/graph.yaml seed knowledge graphs
 e2e/                        Playwright end-to-end tests against docker compose
@@ -61,6 +62,8 @@ scripts/                    dev utilities (graph_check.py)
 **Question serving rules:** only Active Questions; Exam Questions never appear in Quizzes; prefer Questions the Learner hasn't answered; when a Concept's pool is exhausted, serve repeats and raise a Content Request.
 
 **Auth:** Google OIDC, invite-only. First login with no Learners → that person becomes Owner. Others need a valid invite token. Sessions are opaque random tokens stored hashed in Postgres, sent as `HttpOnly; Secure; SameSite=Lax` cookie. State-changing requests require a matching `Origin`. `AUTH_DEV_LOGIN=true` enables `POST /api/auth/dev-login` for local dev and e2e only.
+
+**Tutor Chat** (ADR 0004): `POST /api/sessions/{id}/questions/{qid}/help` with the conversation so far. `app.AskHelp` checks the session is the Learner's own, open, a **Quiz**, and contains the Question; builds a system prompt with the stem, choices, answer key and Explanation marked confidential plus tutoring rules (hint one step at a time, never reveal the key or final answer); and calls the configured OpenAI-compatible gateway (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`). Stateless: nothing is stored. In-memory per-Learner limit (`AI_HELP_PER_HOUR`). `ServedQuestion.helpAvailable` tells the UI when to offer it.
 
 **MCP auth:** `Authorization: Bearer <MCP_TOKEN>` (env), acts as Content Admin with Owner visibility.
 
