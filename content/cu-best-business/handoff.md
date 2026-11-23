@@ -14,7 +14,9 @@ Vocabulary: [CONTEXT.md](../../CONTEXT.md). Workflow rules: [ADR 0003](../../doc
 | Mock Exams | 2 × 30 Questions, 60 min | 2 created: "Mock Exam 1/2 (ข้อสอบเสมือนจริง ชุดที่ 1/2)", each 8 easy / 13 medium / 9 hard |
 | Placement Test / Quizzes | served automatically from Active Questions | working; each Concept keeps 9 Questions for Quizzes (3 at most went to Exams) |
 
-All of this was written to the **local dev** server (`localhost:8080`, `.env` MCP token). **Production has none of it yet.**
+All of this was written to the **local dev** server (`localhost:8080`, `.env` MCP token).
+
+**Production (2026-11-23):** commit `9977770` is deployed to Cloud Run (`tutor-backend-00006`, `tutor-frontend-00003`). The Course content is **not loaded on prod yet**: reading the prod MCP token from Secret Manager needs the Owner. The one-shot loader `prod_load.py` and its `prod_mapping.json` are in the session scratchpad (`…/scratchpad/business/`). It imports the graph, loads the Lessons and Drafts, re-applies the verifier's answers by stem, and creates the same 2 Exams. It refuses to run if the Course already has Questions, and it was rehearsed end to end on the e2e stack (288 Active, 2 Exams).
 
 ## How run 1 was made
 
