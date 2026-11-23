@@ -16,7 +16,7 @@ Vocabulary: [CONTEXT.md](../../CONTEXT.md). Workflow rules: [ADR 0003](../../doc
 
 All of this was written to the **local dev** server (`localhost:8080`, `.env` MCP token).
 
-**Production (2026-11-23):** commit `9977770` is deployed to Cloud Run (`tutor-backend-00006`, `tutor-frontend-00003`). The Course content is **not loaded on prod yet**: reading the prod MCP token from Secret Manager needs the Owner. The one-shot loader `prod_load.py` and its `prod_mapping.json` are in the session scratchpad (`…/scratchpad/business/`). It imports the graph, loads the Lessons and Drafts, re-applies the verifier's answers by stem, and creates the same 2 Exams. It refuses to run if the Course already has Questions, and it was rehearsed end to end on the e2e stack (288 Active, 2 Exams).
+**Production (2026-11-23):** commit `9977770` is deployed to Cloud Run (`tutor-backend-00006`, `tutor-frontend-00003`). **Content loaded on prod 2026-11-24** with the one-shot loader `prod_load.py` (session scratchpad): the graph (6 Topics, 24 Concepts), 24 Lessons, 288 Questions (all Active, using the dev verifier's answers matched by stem) and the 2 Mock Exams. Prod Course id `04c0dbd9-42b6-4640-b592-dd18540b488c`.
 
 ## How run 1 was made
 
@@ -75,7 +75,7 @@ spoil Questions. `get_pool_stats` reads the database back, but it counts a Quest
 
 ## Next run: checklist
 
-1. **Production (not done yet)**:
+1. **Production**: done 2026-11-24 (see above). For a future Course, repeat these steps::
    - seed the graph: `DATABASE_URL=<prod> make seed COURSE=cu-best-business`
    - re-load the content with `MCP_URL=https://<prod-backend>/mcp MCP_TOKEN=<prod token> python3 scripts/content_load.py … --write`
      using the authored JSON. Run 1's JSON is only in the session scratchpad
