@@ -485,6 +485,7 @@ export interface components {
             email: string;
             name: string;
             isOwner: boolean;
+            /** @description Finished a Placement Test in any Course */
             placementDone?: boolean;
         };
         Invite: {
@@ -502,6 +503,8 @@ export interface components {
             slug: string;
             name: string;
             goal?: string;
+            /** @description The current Learner finished a Placement Test in this Course */
+            placementDone?: boolean;
         };
         Topic: {
             /** Format: uuid */
@@ -530,6 +533,8 @@ export interface components {
             name: string;
         };
         ConceptDetail: components["schemas"]["Concept"] & {
+            /** Format: uuid */
+            courseId: string;
             topicName?: string;
             lessonMd?: string | null;
             dependentIds: string[];

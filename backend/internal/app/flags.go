@@ -178,3 +178,16 @@ func (s *Service) RetireQuestion(ctx context.Context, questionID uuid.UUID) erro
 func (s *Service) LearnerPlacementDone(ctx context.Context, learnerID uuid.UUID) (bool, error) {
 	return s.q.LearnerPlacementDone(ctx, learnerID)
 }
+
+// PlacementDoneCourses returns the Courses in which a Learner finished a Placement Test.
+func (s *Service) PlacementDoneCourses(ctx context.Context, learnerID uuid.UUID) (map[uuid.UUID]bool, error) {
+	ids, err := s.q.PlacementDoneCourses(ctx, learnerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}

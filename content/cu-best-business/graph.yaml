@@ -1,0 +1,160 @@
+# CU-BEST Business Analysis — knowledge graph (draft v0.1)
+#
+# Seed content for the Content Admin agent to import.
+# - topics: mirror the knowledge items of the course outline
+# - concepts: graph nodes; `prerequisites` lists Concepts that must come first
+# - question_formats: presentation styles, NOT graph nodes
+#
+# Outline sources (researched 2026-11-23; no official syllabus is published):
+# - Chula MBA FAQ: CU-BEST = Business Analysis 50% + Math 50%, GMAT-like,
+#   every question in a business context.
+#   https://mba.cbs.chula.ac.th/frequently-asked-questions
+# - ChulaTutor outline (tutor-sourced): analytical-reading basics
+#   (conclusion vs. supporting evidence), keywords, analytical-reading
+#   techniques, economic & business vocabulary; question kinds: title /
+#   conclusion / true-false, strengthen / weaken, author's opinion, given data,
+#   text completion; short and long articles.
+#   https://www.chulatutor.com/blog/ติวสอบ-cu-best/
+#   https://course.chulatutor.com/p/cu-best-online/
+# - Bright Brain sample: a business-news passage with figures; "which
+#   statement is true" needs light arithmetic.
+#   https://www.thebrightbrain.com/course.php?id=6
+#
+# Inferred, not sourced: `assumption`, `causal-reasoning` and
+# `paradox-resolution` come from GMAT Critical Reasoning, which the official
+# page says CU-BEST follows. Revise once past papers are available.
+#
+# This part tests reading and reasoning about business passages, not business
+# subject knowledge (no finance formulas, strategy frameworks, etc.).
+#
+# exam_weight is null everywhere: unknown until calibrated against past papers.
+
+course:
+  id: cu-best-business
+  name: CU-BEST วิเคราะห์ธุรกิจ
+  goal: สอบเข้า ป.โท จุฬาฯ (CU-BEST) — พาร์ท Business Analysis
+
+question_formats:
+  - id: short-passage
+    name: บทความสั้น
+  - id: long-passage
+    name: บทความยาว
+  - id: data-passage
+    name: บทความที่มีตัวเลขข้อมูล
+
+topics:
+  - { id: analytical-reading-basics, name: พื้นฐานการอ่านเชิงวิเคราะห์,     exam_weight: null }
+  - { id: keywords,                  name: คำสำคัญ (Keyword),             exam_weight: null }
+  - { id: reading-techniques,        name: เทคนิคการอ่านเชิงวิเคราะห์,        exam_weight: null }
+  - { id: argument-evaluation,       name: การประเมินข้อโต้แย้ง (เสริม/หักล้าง), exam_weight: null }
+  - { id: business-vocabulary,       name: คำศัพท์เศรษฐศาสตร์และธุรกิจ,       exam_weight: null }
+  - { id: data-in-passage,           name: ข้อมูลตัวเลขในบทความธุรกิจ,        exam_weight: null }
+
+concepts:
+  # ── พื้นฐานการอ่านเชิงวิเคราะห์ ─────────────────────────────────
+  - id: main-idea
+    topic: analytical-reading-basics
+    name: ใจความสำคัญและการตั้งชื่อเรื่อง
+    prerequisites: []
+  - id: fact-vs-opinion
+    topic: analytical-reading-basics
+    name: แยกข้อเท็จจริงกับความคิดเห็น
+    prerequisites: []
+  - id: conclusion-evidence
+    topic: analytical-reading-basics
+    name: แยกข้อสรุปและหลักฐานสนับสนุน
+    prerequisites: [main-idea, conclusion-signals]
+  - id: argument-structure
+    topic: analytical-reading-basics
+    name: โครงสร้างข้อโต้แย้ง (ข้ออ้าง เหตุผล ข้อสรุป)
+    prerequisites: [conclusion-evidence, fact-vs-opinion]
+  - id: author-viewpoint
+    topic: analytical-reading-basics
+    name: ความคิดเห็นและน้ำเสียงของผู้เขียน
+    prerequisites: [fact-vs-opinion, contrast-signals]
+
+  # ── คำสำคัญ (Keyword) ─────────────────────────────────────────
+  - id: conclusion-signals
+    topic: keywords
+    name: คำบ่งชี้ข้อสรุปและเหตุผล (ดังนั้น เพราะ จึง)
+    prerequisites: []
+  - id: contrast-signals
+    topic: keywords
+    name: คำแสดงความขัดแย้งและการเปลี่ยนทิศทาง (แต่ อย่างไรก็ตาม)
+    prerequisites: []
+  - id: qualifier-words
+    topic: keywords
+    name: คำบอกขอบเขตและความแน่นอน (ทั้งหมด บางส่วน มักจะ อาจ)
+    prerequisites: []
+
+  # ── เทคนิคการอ่านเชิงวิเคราะห์ ────────────────────────────────
+  - id: passage-mapping
+    topic: reading-techniques
+    name: การจับโครงเรื่องของบทความสั้นและยาว
+    prerequisites: [main-idea, contrast-signals]
+  - id: detail-check
+    topic: reading-techniques
+    name: ตรวจข้อความถูก-ผิดตามเนื้อเรื่อง
+    prerequisites: [passage-mapping, qualifier-words]
+  - id: inference
+    topic: reading-techniques
+    name: การอนุมานสิ่งที่สรุปได้จากข้อความ
+    prerequisites: [detail-check, conclusion-evidence]
+  - id: text-completion
+    topic: reading-techniques
+    name: การเติมเนื้อความให้สอดคล้องกับบทความ
+    prerequisites: [passage-mapping, conclusion-signals, contrast-signals]
+  - id: contradiction-with-passage
+    topic: reading-techniques
+    name: หาข้อความที่ขัดแย้งกับเนื้อเรื่อง
+    prerequisites: [detail-check]
+
+  # ── การประเมินข้อโต้แย้ง ───────────────────────────────────────
+  - id: assumption
+    topic: argument-evaluation
+    name: ข้อสมมติที่ซ่อนอยู่ในข้อโต้แย้ง
+    prerequisites: [argument-structure, inference]
+  - id: causal-reasoning
+    topic: argument-evaluation
+    name: เหตุและผล (ความสัมพันธ์ไม่ได้แปลว่าเป็นสาเหตุ)
+    prerequisites: [argument-structure]
+  - id: strengthen
+    topic: argument-evaluation
+    name: ข้อมูลที่เสริมข้อโต้แย้ง
+    prerequisites: [assumption]
+  - id: weaken
+    topic: argument-evaluation
+    name: ข้อมูลที่หักล้างข้อโต้แย้ง
+    prerequisites: [assumption, causal-reasoning]
+  - id: paradox-resolution
+    topic: argument-evaluation
+    name: อธิบายข้อเท็จจริงที่ดูขัดแย้งกัน
+    prerequisites: [causal-reasoning, contradiction-with-passage]
+
+  # ── คำศัพท์เศรษฐศาสตร์และธุรกิจ ───────────────────────────────
+  - id: economics-terms
+    topic: business-vocabulary
+    name: คำศัพท์เศรษฐศาสตร์ (เงินเฟ้อ GDP อุปสงค์-อุปทาน ดอกเบี้ย)
+    prerequisites: []
+  - id: management-marketing-terms
+    topic: business-vocabulary
+    name: คำศัพท์การจัดการและการตลาด
+    prerequisites: []
+  - id: finance-accounting-terms
+    topic: business-vocabulary
+    name: คำศัพท์การเงินและบัญชี (รายได้ ต้นทุน กำไร สินทรัพย์)
+    prerequisites: []
+
+  # ── ข้อมูลตัวเลขในบทความธุรกิจ ────────────────────────────────
+  - id: numbers-in-passage
+    topic: data-in-passage
+    name: อ่านและคำนวณตัวเลขที่อยู่ในบทความ
+    prerequisites: [detail-check]
+  - id: growth-and-share
+    topic: data-in-passage
+    name: อัตราการเติบโตและส่วนแบ่งตลาด
+    prerequisites: [numbers-in-passage, economics-terms]
+  - id: financial-figures
+    topic: data-in-passage
+    name: ตีความตัวเลขผลประกอบการ (รายได้ กำไร อัตรากำไร)
+    prerequisites: [numbers-in-passage, finance-accounting-terms]

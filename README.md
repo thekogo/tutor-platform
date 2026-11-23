@@ -2,7 +2,7 @@
 
 A tutoring platform that models a course as a **knowledge graph**, tracks where each Learner is weak, and points them to the Concept they should study next. When a Learner struggles, the platform follows the Prerequisite graph back to the **Root Cause** and recommends studying that first, always showing why.
 
-The first Course is **CU-BEST Math** (entrance exam for graduate study at Chulalongkorn University). The UI is in Thai.
+It serves several Courses side by side; a Learner picks one on the home page, and Mastery, Placement Tests and Learning Paths are tracked per Course. The current Courses are the two parts of **CU-BEST** (entrance exam for graduate study at Chulalongkorn University): **Math** and **Business Analysis**. The UI is in Thai.
 
 Content (Concepts, Lessons, Questions) is written by the Owner's AI agent (Claude) through an **MCP server**; the platform itself never calls an LLM.
 
@@ -10,7 +10,7 @@ Content (Concepts, Lessons, Questions) is written by the Owner's AI agent (Claud
 - Architecture, data model, quality bar: [docs/architecture.md](docs/architecture.md)
 - Decisions: [docs/adr/](docs/adr/)
 - REST contract (source of truth): [api/openapi.yaml](api/openapi.yaml)
-- Course graph: [content/cu-best-math/graph.yaml](content/cu-best-math/graph.yaml) ([rendered](content/cu-best-math/graph.md))
+- Course graphs: [content/cu-best-math/graph.yaml](content/cu-best-math/graph.yaml) ([rendered](content/cu-best-math/graph.md)), [content/cu-best-business/graph.yaml](content/cu-best-business/graph.yaml) ([rendered](content/cu-best-business/graph.md))
 
 ## Stack
 
@@ -39,7 +39,8 @@ docs/      architecture + ADRs    .github/   CI, CodeQL, Dependabot
 ```sh
 cp .env.example .env        # safe dev defaults; dev login enabled
 make up                     # builds and starts db, backend, frontend; waits until healthy
-make seed                   # imports content/cu-best-math/graph.yaml
+make seed                   # imports content/cu-best-math/graph.yaml (COURSE=cu-best-business for the other)
+make seed-all               # imports every Course under content/
 ```
 
 Open http://localhost:3000. With `AUTH_DEV_LOGIN=true` and `NEXT_PUBLIC_DEV_LOGIN=true` the login page offers a dev login (no Google needed). **The first person to log in becomes the Owner.**

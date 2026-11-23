@@ -1,4 +1,5 @@
 import "server-only";
+import { notFound } from "next/navigation";
 import { cache } from "react";
 import { serverApi, unwrap } from "./server";
 
@@ -8,11 +9,17 @@ export const getMe = cache(async () => {
   return unwrap(await api.GET("/me"));
 });
 
-/** The Learner's Course. The platform currently serves one Course; we use the first. */
-export const getDefaultCourse = cache(async () => {
+/** Every Course, with the current Learner's per-Course Placement Test status. */
+export const getCourses = cache(async () => {
   const api = await serverApi();
-  const courses = unwrap(await api.GET("/courses"));
-  return courses[0] ?? null;
+  return unwrap(await api.GET("/courses"));
+});
+
+/** One Course summary by id; 404s when it doesn't exist. */
+export const getCourse = cache(async (courseId: string) => {
+  const course = (await getCourses()).find((c) => c.id === courseId);
+  if (!course) notFound();
+  return course;
 });
 
 export const getCourseGraph = cache(async (courseId: string) => {

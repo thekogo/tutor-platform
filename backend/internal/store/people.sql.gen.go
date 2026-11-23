@@ -270,6 +270,32 @@ func (q *Queries) ListLearners(ctx context.Context) ([]Learner, error) {
 	return items, nil
 }
 
+const placementDoneCourses = `-- name: PlacementDoneCourses :many
+SELECT DISTINCT s.course_id FROM study_sessions s
+WHERE s.learner_id = $1 AND s.kind = 'placement' AND s.finished_at IS NOT NULL
+  AND EXISTS (SELECT 1 FROM answers a WHERE a.session_id = s.id)
+`
+
+func (q *Queries) PlacementDoneCourses(ctx context.Context, learnerID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, placementDoneCourses, learnerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var course_id uuid.UUID
+		if err := rows.Scan(&course_id); err != nil {
+			return nil, err
+		}
+		items = append(items, course_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateLearnerName = `-- name: UpdateLearnerName :exec
 UPDATE learners SET name = $2 WHERE id = $1
 `

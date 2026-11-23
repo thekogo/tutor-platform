@@ -47,6 +47,10 @@ dev-db: ## Start only Postgres on localhost:5433 (for running backend/frontend o
 seed: ## Import content/<course>/graph.yaml (COURSE=cu-best-math) into the database at DATABASE_URL
 	$(MAKE) -C backend seed
 
+.PHONY: seed-all
+seed-all: ## Import every content/*/graph.yaml (each Course upserts by slug; others are untouched)
+	@for f in content/*/graph.yaml; do c=$$(basename $$(dirname $$f)); echo "→ $$c"; $(MAKE) -C backend seed COURSE=$$c; done
+
 ##@ Code
 
 .PHONY: generate

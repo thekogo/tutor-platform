@@ -267,9 +267,10 @@ export const handlers = [
 
   // courses
   http.get(api("/courses"), ({ cookies }) => {
-    if (!currentLearner(cookies)) return unauthorized();
+    const me = currentLearner(cookies);
+    if (!me) return unauthorized();
     const { id, slug, name, goal } = courseGraph;
-    return json<CourseSummary[]>([{ id, slug, name, goal }]);
+    return json<CourseSummary[]>([{ id, slug, name, goal, placementDone: me.placementDone ?? false }]);
   }),
   http.get(api("/courses/:courseId"), ({ cookies, params }) => {
     if (!currentLearner(cookies)) return unauthorized();
@@ -299,6 +300,7 @@ export const handlers = [
     if (!c) return notFound("ไม่พบแนวคิด");
     const detail: ConceptDetail = {
       ...c,
+      courseId: COURSE_ID,
       topicName: topicById.get(c.topicId)?.name,
       lessonMd: lessonFor(c.slug),
       dependentIds: courseGraph.concepts.filter((d) => d.prerequisiteIds.includes(c.id)).map((d) => d.id),

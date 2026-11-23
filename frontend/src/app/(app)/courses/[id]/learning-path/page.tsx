@@ -3,16 +3,16 @@ import { AbandonPathButton } from "@/components/AbandonPathButton";
 import { MasteryChip } from "@/components/MasteryChip";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, PageHeader } from "@/components/StateViews";
-import { getDefaultCourse } from "@/lib/api/queries";
+import { getCourse } from "@/lib/api/queries";
 import { serverApi, unwrapOptional } from "@/lib/api/server";
 import { T } from "@/lib/terms";
 import { btn, card, cn, formatDateTime } from "@/lib/ui";
 
 export const metadata = { title: T.learningPath };
 
-export default async function LearningPathPage() {
-  const course = await getDefaultCourse();
-  if (!course) return <EmptyState title={`ยังไม่มี${T.course}`} />;
+export default async function LearningPathPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const course = await getCourse(id);
   const api = await serverApi();
   const path = await api
     .GET("/courses/{courseId}/learning-path", { params: { path: { courseId: course.id } } })
@@ -25,8 +25,8 @@ export default async function LearningPathPage() {
         <EmptyState
           title={`ยังไม่มี${T.learningPath}ที่กำลังเรียน`}
           action={
-            <Link href="/" className={btn.primary}>
-              ดู{T.recommendation}ที่หน้าหลัก
+            <Link href={`/courses/${course.id}`} className={btn.primary}>
+              ดู{T.recommendation}ที่ภาพรวม{T.course}
             </Link>
           }
         >
@@ -49,7 +49,7 @@ export default async function LearningPathPage() {
       {done && (
         <div className={cn(card, "mb-6 border-green-200 bg-green-50")} role="status">
           <p className="font-semibold text-green-800">🎉 จบ{T.learningPath}แล้ว!</p>
-          <p className="text-sm text-green-900">กลับไปหน้าหลักเพื่อดู{T.recommendation}ถัดไป</p>
+          <p className="text-sm text-green-900">กลับไปที่ภาพรวม{T.course}เพื่อดู{T.recommendation}ถัดไป</p>
         </div>
       )}
       <ol className="flex flex-col gap-3" aria-label="ขั้นตอนของเส้นทางการเรียน">

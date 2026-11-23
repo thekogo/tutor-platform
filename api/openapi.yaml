@@ -421,7 +421,7 @@ components:
         email: { type: string, format: email }
         name: { type: string }
         isOwner: { type: boolean }
-        placementDone: { type: boolean }
+        placementDone: { type: boolean, description: Finished a Placement Test in any Course }
 
     Invite:
       type: object
@@ -440,6 +440,7 @@ components:
         slug: { type: string }
         name: { type: string }
         goal: { type: string }
+        placementDone: { type: boolean, description: The current Learner finished a Placement Test in this Course }
 
     Topic:
       type: object
@@ -482,8 +483,9 @@ components:
       allOf:
         - $ref: "#/components/schemas/Concept"
         - type: object
-          required: [dependentIds, mastery]
+          required: [courseId, dependentIds, mastery]
           properties:
+            courseId: { type: string, format: uuid }
             topicName: { type: string }
             lessonMd: { type: string, nullable: true }
             dependentIds: { type: array, items: { type: string, format: uuid } }

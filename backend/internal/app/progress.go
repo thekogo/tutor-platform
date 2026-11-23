@@ -71,6 +71,7 @@ func masteryView(id uuid.UUID, m map[domain.ConceptID]domain.Mastery) MasteryVie
 // ConceptDetail is a Concept with Lesson, neighbors, and the Learner's Mastery.
 type ConceptDetail struct {
 	ConceptView
+	CourseID            uuid.UUID
 	TopicName           string
 	LessonMd            *string
 	DependentIDs        []uuid.UUID
@@ -100,7 +101,7 @@ func (s *Service) ConceptDetail(ctx context.Context, a Actor, conceptID uuid.UUI
 	if err != nil {
 		return ConceptDetail{}, err
 	}
-	d := ConceptDetail{ConceptView: conceptView(g, c), TopicName: g.TopicByID[c.TopicID].Name, DependentIDs: []uuid.UUID{}}
+	d := ConceptDetail{ConceptView: conceptView(g, c), CourseID: g.Course.ID, TopicName: g.TopicByID[c.TopicID].Name, DependentIDs: []uuid.UUID{}}
 	for _, dep := range g.Graph.Dependents(cid(c.ID)) {
 		d.DependentIDs = append(d.DependentIDs, ucid(dep))
 	}

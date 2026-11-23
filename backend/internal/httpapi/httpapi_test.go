@@ -434,7 +434,7 @@ func TestCourseProgressEndpoints(t *testing.T) {
 
 	var courses []httpapi.CourseSummary
 	c.do(http.MethodGet, "/api/courses", nil).json(t, &courses)
-	if len(courses) != 1 || courses[0].Slug != testutil.CourseSlug {
+	if len(courses) != 1 || courses[0].Slug != testutil.CourseSlug || courses[0].PlacementDone == nil || *courses[0].PlacementDone {
 		t.Fatalf("courses %+v", courses)
 	}
 	var g httpapi.CourseGraph
@@ -449,6 +449,9 @@ func TestCourseProgressEndpoints(t *testing.T) {
 	}
 	var d httpapi.ConceptDetail
 	c.do(http.MethodGet, "/api/concepts/"+h.env.Concepts["b"].String(), nil).json(t, &d)
+	if d.CourseId != h.env.CourseID {
+		t.Fatalf("concept courseId %v, want %v", d.CourseId, h.env.CourseID)
+	}
 	if d.LessonMd == nil || *d.LessonMd != "# Lesson B" || len(d.PrerequisiteIds) != 1 || len(d.DependentIds) != 1 || d.Mastery.Level != "unassessed" {
 		t.Fatalf("concept detail %+v", d)
 	}

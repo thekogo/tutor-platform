@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { BrandLogo } from "@/components/BrandMark";
 import { DevLoginForm } from "@/components/DevLoginForm";
+import { BRAND } from "@/lib/brand";
 import { isApiMocking, isDevLoginEnabled } from "@/lib/env";
 import { T } from "@/lib/terms";
 
@@ -14,9 +16,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main data-testid="login-page" className="flex flex-1 items-center justify-center bg-gradient-to-b from-blue-50 to-slate-50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-blue-900">ติวเตอร์ CU-BEST</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-bold text-blue-900">
+          <BrandLogo className="size-10" />
+          {BRAND.name}
+        </h1>
         <p className="mt-2 text-slate-600">
-          ติวคณิตศาสตร์ด้วยกราฟความรู้ ระบบจะหา{T.rootCause}และแนะนำว่าควรเรียนอะไรต่อ
+          ติวด้วยกราฟความรู้ ระบบจะหา{T.rootCause}และแนะนำว่าควรเรียนอะไรต่อ
         </p>
         {invite && (
           <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-900" role="status">
