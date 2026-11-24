@@ -14,7 +14,13 @@ Same pipeline as [cu-best-business](../cu-best-business/handoff.md).
 | Verification | independent pass; match → Active | **360 / 360 Active** (0 mismatches, 0 flagged) |
 | Mock Exams | section-proportional | 2 × 40 Questions, 45 min (see Exams) |
 
-All of this is on **local dev** (`localhost:8080`) only. **Not on production yet.**
+All of this was first written to **local dev** (`localhost:8080`).
+
+**Production (2026-11-24):** no image rebuild was needed (commit `5989663` only touched a test and a local script; running
+revisions already serve any Course). Seeded the graph on prod, loaded 30 Lessons and 360 Questions through prod MCP, activated all 360
+with the dev verifier's answers matched by stem + choices (360/360 matched), and re-created both Mock Exams with the same Questions
+and order. Prod Course id `24a3ef83-3e54-4f31-8f56-366f1e4136a1`. Loaders `cutep_prod_verify.py` / `cutep_prod_exams.py` are in the
+session scratchpad. Not yet clicked through as a Learner on prod (Google login only).
 
 ## How run 1 was made
 
@@ -69,11 +75,7 @@ The authored JSON (with keys) is intentionally **not** in git. Run 1's files are
 
 ## Next run: checklist
 
-1. **Production** (needs the Owner's go-ahead):
-   - deploy the code that adds `cu-tep` to seed tests and `LABELS` to the loader (see the Cloud Run notes)
-   - seed: `DATABASE_URL=<prod> make seed COURSE=cu-tep`
-   - load: `MCP_URL=https://<prod-backend>/mcp MCP_TOKEN=<prod token> COURSE=cu-tep LABELS=ABCD python3 scripts/content_load.py … --write`
-   - re-verify on prod with a fresh independent agent, then re-create the 2 Exams
+1. **Production**: done 2026-11-24 (see Status). Open the Course on prod as a Learner once to confirm the UI.
 2. **Calibrate** once real past papers are reviewed: the inferred grammar points and reading question types, and `exam_weight`.
 3. **Longer passages:** add a few 600–700-word passages for the Mock Exams.
 4. **Watch Flags and Content Requests** after Learners start.
