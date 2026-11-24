@@ -1,6 +1,7 @@
-"""Validate authored business-course JSON files and (with --write) push them via MCP.
+"""Validate authored Course JSON files and (with --write) push them via MCP.
 
 Usage: COURSE=cu-best-business python3 scripts/content_load.py <topic.json>... [--write]
+       LABELS=ABCD for Courses whose Questions have 4 choices (default ABCDE).
 
 Checks each authored file against content/<course>/authoring-brief.md rules; with --write,
 upserts the Lessons and creates the Questions as Draft via MCP (scripts/mcp_call.py).
@@ -16,6 +17,7 @@ import yaml
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 COURSE = os.environ.get("COURSE", "cu-best-business")
+LABELS = os.environ.get("LABELS", "ABCDE")
 graph = yaml.safe_load(open(f"{REPO}/content/{COURSE}/graph.yaml", encoding="utf-8"))
 topic_of = {c["id"]: c["topic"] for c in graph["concepts"]}
 formats = {f["id"] for f in graph["question_formats"]}
@@ -56,14 +58,14 @@ def validate(path):
         if q.get("source") != "ai_generated":
             errs.append(f"{tag}: source")
         ch = q.get("choices", [])
-        if [c["label"] for c in ch] != list("ABCDE"):
+        if [c["label"] for c in ch] != list(LABELS):
             errs.append(f"{tag}: labels {[c['label'] for c in ch]}")
         correct = [c["label"] for c in ch if c.get("is_correct")]
         if len(correct) != 1:
             errs.append(f"{tag}: {len(correct)} correct"); continue
         if len({c["body_md"].strip() for c in ch}) != len(ch):
             errs.append(f"{tag}: duplicate choice text")
-        m = re.findall(r"ตอบ\s*\(?([A-E])\)?", q.get("explanation_md", ""))
+        m = re.findall(rf"ตอบ\s*\(?([{LABELS}])\)?", q.get("explanation_md", ""))
         if not m:
             errs.append(f"{tag}: no 'ตอบ X' in explanation")
         elif m[-1] != correct[0]:
@@ -77,7 +79,7 @@ def validate(path):
             warns.append(f"{c}: {len(cq)} questions (want 12)")
         diff = Counter(q["difficulty"] for q in cq)
         keys = Counter(next(ch["label"] for ch in q["choices"] if ch.get("is_correct")) for q in cq if any(ch.get("is_correct") for ch in q["choices"]))
-        if any(keys[l] < 2 for l in "ABCDE"):
+        if any(keys[l] < 2 for l in LABELS):
             warns.append(f"{c}: key balance {dict(sorted(keys.items()))}")
         if not (diff[1] and diff[2] and diff[3]):
             warns.append(f"{c}: difficulty {dict(diff)}")

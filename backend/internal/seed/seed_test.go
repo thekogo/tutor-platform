@@ -10,7 +10,7 @@ import (
 )
 
 // courses are the real graphs under content/, by Course slug.
-var courses = []string{"cu-best-math", "cu-best-business"}
+var courses = []string{"cu-best-math", "cu-best-business", "cu-tep"}
 
 func graphFile(slug string) string { return "../../../content/" + slug + "/graph.yaml" }
 
