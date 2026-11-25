@@ -58,6 +58,6 @@ describe("RecommendationCard", () => {
     const [top] = await fetchRecommendations();
     render(<RecommendationCard recommendation={top} courseId={COURSE_ID} top />);
     await userEvent.click(screen.getByRole("button", { name: "เริ่มเส้นทางการเรียน" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/learning-path"));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/courses/${COURSE_ID}/learning-path`));
   });
 });

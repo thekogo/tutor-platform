@@ -1,0 +1,269 @@
+# CU-TEP — knowledge graph (draft v0.1)
+#
+# Seed content for the Content Admin agent to import.
+# - topics: mirror the skill areas / sections of the test
+# - concepts: graph nodes; `prerequisites` lists Concepts that must come first
+# - question_formats: presentation styles, NOT graph nodes
+# - `# technique:` above each Concept = the exam technique that Lessons and
+#   Questions for that Concept should teach (for content authors).
+#
+# Exam structure (researched 2026-11-24). The official Academic Testing Center
+# site only says "listening, reading and writing" and offers PBT (paper) and
+# CBT/E-Testing (computer) rounds; it publishes no item breakdown. The breakdown
+# below is consistent across the secondary sources:
+#   - 120 items, 120 points, 1 point per item, multiple choice only,
+#     about 2 h 10 min, score valid 2 years.
+#   - Listening 30 items / 30 min: Part 1 short dialogues, Part 2 long
+#     dialogues, Part 3 talks (monologues). Audio is played once.
+#   - Reading 60 items / 70 min: Part 1 one cloze passage (~600-700 words,
+#     15 blanks, grammar + vocabulary); then one short letter-style passage
+#     (5 items) and four long passages of ~600-700 words (10 items each).
+#   - Writing 30 items / 30 min: error identification — one sentence with
+#     4 underlined parts, choose the wrong one. No essay.
+#   - Optional Speaking (CU-TEP & Speaking, +30 points) is registered
+#     separately and is out of scope here.
+#   - Every item has 4 choices (error ID: 4 underlined parts; MCQ: 4 options).
+#   - No penalty for wrong answers: never leave a blank.
+#   PBT and CBT/E-Testing use the same content; CBT costs more and returns
+#   results sooner. Nothing here depends on the delivery mode.
+# Sources:
+# - Chula Academic Testing Center (official; skills + PBT/CBT only)
+#   https://atc.chula.ac.th/Main/en/home_th-english
+# - NSTRU language centre (120 items / 120 points / 2 h 10 min / MC only /
+#   error identification / valid 2 years)  https://clic.nstru.ac.th/?p=2006
+# - ChulaTutor (section items, timing, parts, cloze + passage layout,
+#   4 choices, no negative marking)  https://www.chulatutor.com/cu-tep/
+# - inlingua Bangkok (30/60/30 split; writing tests verb forms, S-V
+#   agreement, conjunctions)
+#   https://www.inlinguabangkok.com/en/articles/exam-prep/cu-tep-tu-get-thai-university-admission/
+# - ChulaTutor error-ID sample on pronouns (4 underlined parts; pronoun
+#   case, agreement, relative pronoun, redundant pronoun)
+#   https://www.chulatutor.com/blog/?p=844
+# - Thai research on CU-TEP-based grammar (passive voice and S-V agreement
+#   are the most frequent points; seen via search summary only, PDF not read)
+#   https://so04.tci-thaijo.org/index.php/yru_human/article/download/252511/177758/1006396
+#
+# Sourced vs. inferred:
+# - Sourced: the three sections, cloze part, letter/long passages, listening
+#   parts, error-ID format, and the grammar points subject-verb-agreement,
+#   verb-tense, passive-voice, pronouns, conjunctions-connectors.
+# - Inferred from common error-ID / reading-comprehension practice (TOEFL-ITP
+#   style, which CU-TEP resembles), not from a published CU-TEP spec:
+#   the other grammar Concepts (word-form, articles-quantifiers, comparison,
+#   prepositions, gerund-infinitive, relative-clauses, participle-phrases,
+#   parallel-structure), the reading question types (main idea, detail,
+#   vocab in context, reference, inference, purpose/tone), and every
+#   `# technique:` note. Revise once past papers are reviewed.
+#
+# Audio decision: the platform renders text only and cannot play audio. Listening
+# is kept as a Topic because it is 25% of the score and its question types
+# (implied meaning, attitude, gist of a talk) and techniques (predicting from
+# the choices, paraphrase over echoed words, "sounds-like"/repeated-word
+# distractors) transfer from transcripts. Stems carry a written transcript; the
+# Topic name says "จากบทถอดความ" so Learners know it trains question types and
+# technique, not ear training, and should pair it with real audio practice
+# elsewhere. Dropping the section would hide a quarter of the test.
+#
+# exam_weight = points attributed to the Topic / 10, from the 30/60/30 split:
+#   listening 30 -> 3.0; reading comprehension 45 (letter 5 + 4x10) -> 4.5;
+#   cloze 15 -> 1.5; writing 30 split evenly over the three grammar Topics and
+#   the error-ID technique Topic -> 0.75 each (the even split is inferred;
+#   grammar also feeds the cloze). All Topics are set so none falls back to
+#   the implicit weight 1 of a null.
+
+course:
+  id: cu-tep
+  name: CU-TEP ภาษาอังกฤษ
+  goal: สอบ CU-TEP ให้ได้คะแนนตามเกณฑ์เข้า ป.โท จุฬาฯ (Listening, Reading, Writing)
+
+question_formats:
+  - id: error-identification
+    name: หาข้อผิดในประโยค (ขีดเส้นใต้ 4 จุด)
+  - id: sentence-completion
+    name: เติมคำในประโยค (ใช้ฝึกไวยากรณ์ ไม่มีในข้อสอบจริง)
+  - id: cloze-passage
+    name: เติมคำในบทความ (Cloze)
+  - id: short-passage
+    name: บทความสั้น / จดหมาย
+  - id: long-passage
+    name: บทความยาว (600-700 คำ)
+  - id: short-conversation
+    name: บทสนทนาสั้น (บทถอดความ)
+  - id: long-conversation
+    name: บทสนทนายาว (บทถอดความ)
+  - id: talk
+    name: การบรรยาย / ประกาศ (บทถอดความ)
+
+topics:
+  - { id: sentence-and-verbs,     name: โครงสร้างประโยคและกริยา,                         exam_weight: 0.75 }
+  - { id: words-and-modifiers,    name: ชนิดของคำและคำขยาย,                              exam_weight: 0.75 }
+  - { id: complex-sentences,      name: ประโยคซับซ้อนและการเชื่อมประโยค,                     exam_weight: 0.75 }
+  - { id: error-id-technique,     name: เทคนิคหาข้อผิด (Error Identification),             exam_weight: 0.75 }
+  - { id: cloze-passage,          name: เติมคำในบทความ (Cloze),                            exam_weight: 1.5 }
+  - { id: reading-comprehension,  name: การอ่านจับใจความ (Reading Comprehension),          exam_weight: 4.5 }
+  - { id: listening-transcripts,  name: ทักษะข้อสอบ Listening จากบทถอดความ (Transcript),  exam_weight: 3.0 }
+
+concepts:
+  # ── โครงสร้างประโยคและกริยา ─────────────────────────────────────
+  # technique: Find the main subject and the finite verb first; every clause needs exactly one of each, so a missing or doubled verb is an error.
+  - id: sentence-core
+    topic: sentence-and-verbs
+    name: หาประธานและกริยาแท้ของประโยค (Sentence Core)
+    prerequisites: []
+  # technique: Strike out phrases between subject and verb (of..., with..., which...) and match the verb to the real head noun; watch each/every/one of/there is-are.
+  - id: subject-verb-agreement
+    topic: sentence-and-verbs
+    name: ความสอดคล้องของประธานและกริยา (Subject-Verb Agreement)
+    prerequisites: [sentence-core]
+  # technique: Circle time markers (since, for, by + time, ago, last year) and check the underlined verb's tense against them and against the other verbs in the sentence.
+  - id: verb-tense
+    topic: sentence-and-verbs
+    name: การใช้ Tense ให้สอดคล้องกับบริบทเวลา (Verb Tense)
+    prerequisites: [sentence-core]
+  # technique: Ask "does the subject do the action or receive it?"; a non-living or affected subject usually needs be + V3, and an intransitive verb can never be passive.
+  - id: passive-voice
+    topic: sentence-and-verbs
+    name: ประโยค Passive (Passive Voice)
+    prerequisites: [verb-tense, subject-verb-agreement]
+  # technique: Memorise the high-frequency verb lists (avoid/enjoy + -ing; decide/plan + to V); after a preposition always -ing; watch "used to V" vs "be used to V-ing".
+  - id: gerund-infinitive
+    topic: sentence-and-verbs
+    name: Gerund และ Infinitive
+    prerequisites: [sentence-core]
+
+  # ── ชนิดของคำและคำขยาย ──────────────────────────────────────────
+  # technique: Check the slot, not the meaning: before a noun = adjective, modifying a verb/adjective = adverb (-ly), after an article/preposition = noun; suffixes reveal the form.
+  - id: word-form
+    topic: words-and-modifiers
+    name: ชนิดของคำ (Word Form — noun, verb, adjective, adverb)
+    prerequisites: [sentence-core]
+  # technique: Check case (subject/object/possessive), number and gender against the antecedent, and delete a pronoun that repeats a subject already stated.
+  - id: pronouns
+    topic: words-and-modifiers
+    name: คำสรรพนาม (Pronoun Case and Agreement)
+    prerequisites: [sentence-core]
+  # technique: Decide countable vs. uncountable first, then check the determiner (much/many, less/fewer, a/an/the, a number of + plural vs. the number of + singular).
+  - id: articles-quantifiers
+    topic: words-and-modifiers
+    name: Article และคำบอกปริมาณ (Articles and Quantifiers)
+    prerequisites: []
+  # technique: Look for the pair signal: -er/more needs "than", the/-est needs a group; never "more + -er"; as + adjective + as; compare like with like.
+  - id: comparison
+    topic: words-and-modifiers
+    name: การเปรียบเทียบ (Comparison)
+    prerequisites: [word-form]
+  # technique: Learn fixed collocations (interested in, depend on, responsible for); if an underlined preposition looks odd, test whether the verb/adjective takes a different one.
+  - id: prepositions
+    topic: words-and-modifiers
+    name: คำบุพบทและคำที่ใช้คู่กัน (Prepositions and Collocations)
+    prerequisites: [word-form]
+
+  # ── ประโยคซับซ้อนและการเชื่อมประโยค ───────────────────────────────
+  # technique: Classify the connector (contrast, cause, result, addition) and check both its logic and its grammar: although + clause, despite + noun, so/therefore punctuation.
+  - id: conjunctions-connectors
+    topic: complex-sentences
+    name: คำเชื่อมและความสัมพันธ์ของประโยค (Conjunctions and Connectors)
+    prerequisites: [sentence-core]
+  # technique: Match who/which/whose/where to the noun before it, and check the clause is not missing (or doubling) its own subject/object.
+  - id: relative-clauses
+    topic: complex-sentences
+    name: Relative Clause (who, which, that, whose, where)
+    prerequisites: [sentence-core, pronouns]
+  # technique: An -ing phrase = active, a V3 phrase = passive; the opening phrase must describe the subject that follows the comma (dangling modifier).
+  - id: participle-phrases
+    topic: complex-sentences
+    name: วลี Participle และการลดรูปประโยค (Participle Phrases)
+    prerequisites: [relative-clauses, passive-voice]
+  # technique: Spot and/or/but, both...and, not only...but also, and lists; every item must share one form (all nouns, all -ing, all to V).
+  - id: parallel-structure
+    topic: complex-sentences
+    name: โครงสร้างคู่ขนาน (Parallel Structure)
+    prerequisites: [word-form, conjunctions-connectors, gerund-infinitive]
+
+  # ── เทคนิคหาข้อผิด (Error Identification) ────────────────────────
+  # technique: Bracket modifiers, relative and participle clauses to expose the core S-V-O before judging any underlined part in a long sentence.
+  - id: long-sentence-stripping
+    topic: error-id-technique
+    name: ตัดส่วนขยายเพื่อหาโครงประโยคหลักในประโยคยาว
+    prerequisites: [sentence-core, relative-clauses, participle-phrases]
+  # technique: Run a fixed checklist on the 4 underlined parts (verb agreement/tense/voice -> word form -> pronoun -> parallelism -> article/preposition); about 1 min per item; guess rather than leave blank, there is no penalty.
+  - id: error-id-checklist
+    topic: error-id-technique
+    name: ลำดับการตรวจ 4 จุดที่ขีดเส้นใต้และการบริหารเวลา
+    prerequisites: [long-sentence-stripping, subject-verb-agreement, passive-voice, word-form, pronouns, parallel-structure]
+
+  # ── เติมคำในบทความ (Cloze) ───────────────────────────────────────
+  # technique: Read the whole sentence around the blank (and the next one); decide the needed part of speech/verb form first, then pick among the 4 choices.
+  - id: cloze-grammar-clues
+    topic: cloze-passage
+    name: ใช้คำใบ้ทางไวยากรณ์รอบช่องว่าง
+    prerequisites: [word-form, verb-tense, conjunctions-connectors]
+  # technique: When all 4 choices fit grammatically, choose by collocation and the passage's logic (contrast vs. continuation); skim the full passage first for topic and tone.
+  - id: cloze-word-choice
+    topic: cloze-passage
+    name: เลือกคำศัพท์ให้เข้ากับบริบทและคำที่ใช้คู่กัน
+    prerequisites: [cloze-grammar-clues, prepositions, vocab-in-context]
+
+  # ── การอ่านจับใจความ (Reading Comprehension) ──────────────────────
+  # technique: Skim title, first paragraph and topic sentences (~1 min) before the questions; scan for names, numbers and keywords from the stem; budget ~10 min per long passage.
+  - id: skim-and-scan
+    topic: reading-comprehension
+    name: อ่านเร็วจับภาพรวม (Skimming) และหาข้อมูลเฉพาะ (Scanning)
+    prerequisites: []
+  # technique: The right choice restates the text with synonyms or a changed structure; a choice that copies exact words from the text is often the trap.
+  - id: paraphrase-recognition
+    topic: reading-comprehension
+    name: จับคำถอดความ (Paraphrase) ระหว่างตัวเลือกกับเนื้อเรื่อง
+    prerequisites: []
+  # technique: The main idea covers the whole passage: eliminate choices that are too narrow (one paragraph's detail) or too broad / off-topic; check topic sentences and the conclusion.
+  - id: main-idea
+    topic: reading-comprehension
+    name: ใจความสำคัญและชื่อเรื่อง (Main Idea / Title)
+    prerequisites: [skim-and-scan]
+  # technique: Scan for the stem's keyword, read 1-2 sentences around it, match by paraphrase; for NOT/EXCEPT items, tick off the three choices the text supports.
+  - id: detail-questions
+    topic: reading-comprehension
+    name: คำถามรายละเอียดและ NOT/EXCEPT (Detail Questions)
+    prerequisites: [skim-and-scan, paraphrase-recognition]
+  # technique: Ignore the dictionary meaning you know; reread the sentence, substitute each choice for the word, and use contrast/definition clues nearby.
+  - id: vocab-in-context
+    topic: reading-comprehension
+    name: เดาความหมายศัพท์จากบริบท (Vocabulary in Context)
+    prerequisites: [word-form]
+  # technique: Look back to the nearest preceding noun that matches the pronoun in number and meaning, then substitute it back into the sentence to confirm.
+  - id: reference-words
+    topic: reading-comprehension
+    name: คำอ้างอิง (Reference — it, they, this, such)
+    prerequisites: [pronouns]
+  # technique: The answer must be supported by the text but not stated outright; reject choices that go further than the text (extreme words: always, never, all).
+  - id: inference
+    topic: reading-comprehension
+    name: การอนุมานจากเนื้อเรื่อง (Inference)
+    prerequisites: [detail-questions]
+  # technique: Purpose = why the author wrote it / mentioned X (inform, argue, compare, criticise); tone = from loaded adjectives and adverbs; academic passages are rarely extreme.
+  - id: author-purpose-tone
+    topic: reading-comprehension
+    name: จุดประสงค์และน้ำเสียงของผู้เขียน (Purpose and Tone)
+    prerequisites: [main-idea, inference]
+
+  # ── ทักษะข้อสอบ Listening จากบทถอดความ ──────────────────────────
+  # technique: Read the 4 choices before the audio to guess the topic, the speakers and the likely question; choices that share a word often point to the key idea.
+  - id: predict-from-choices
+    topic: listening-transcripts
+    name: ทำนายคำถามจากตัวเลือกก่อนฟัง
+    prerequisites: []
+  # technique: The answer usually rests on the second speaker's reply and is a paraphrase of it; a choice repeating a word heard (or a sound-alike word) is usually wrong.
+  - id: short-dialogue
+    topic: listening-transcripts
+    name: บทสนทนาสั้นและความหมายแฝง (Short Dialogues, Implied Meaning)
+    prerequisites: [predict-from-choices, paraphrase-recognition]
+  # technique: Infer attitude and intention from idioms, suggestions and responses (Why don't you..., I wish..., You can say that again) rather than literal words.
+  - id: speaker-attitude
+    topic: listening-transcripts
+    name: ทัศนคติและเจตนาของผู้พูด (Speaker Attitude and Intention)
+    prerequisites: [short-dialogue, author-purpose-tone]
+  # technique: Gist comes from the opening lines; note-take who/what/why/next in order since questions follow the talk's sequence; audio plays once, so move on after a missed item.
+  - id: long-conversation-talk
+    topic: listening-transcripts
+    name: บทสนทนายาวและการบรรยาย (Long Conversations and Talks)
+    prerequisites: [predict-from-choices, main-idea, detail-questions]

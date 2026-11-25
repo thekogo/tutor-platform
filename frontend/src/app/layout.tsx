@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
+import { BRAND } from "@/lib/brand";
 
 const thai = IBM_Plex_Sans_Thai({
   variable: "--font-thai",
@@ -11,8 +12,8 @@ const thai = IBM_Plex_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: { default: "ติวเตอร์ CU-BEST", template: "%s · ติวเตอร์ CU-BEST" },
-  description: "ติวคณิตศาสตร์ CU-BEST ด้วยกราฟความรู้ ค้นหาจุดอ่อนและแนะนำสิ่งที่ควรเรียนต่อ",
+  title: { default: BRAND.name, template: `%s · ${BRAND.name}` },
+  description: BRAND.tagline,
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

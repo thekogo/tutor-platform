@@ -38,7 +38,7 @@ export function LoadingBlock({ label = "กำลังโหลด…" }: { lab
 export function BackHome() {
   return (
     <Link href="/" className={btn.secondary}>
-      กลับหน้าหลัก
+      กลับไปเลือกคอร์ส
     </Link>
   );
 }

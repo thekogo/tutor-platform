@@ -7,19 +7,16 @@ import { api } from "@/lib/api/client";
 import { T } from "@/lib/terms";
 import { cn } from "@/lib/ui";
 
-type Props = { courseId: string | null; isOwner: boolean; learnerName: string };
+type Props = { isOwner: boolean; learnerName: string };
 
-export function AppNav({ courseId, isOwner, learnerName }: Props) {
+export function AppNav({ isOwner, learnerName }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const links = [
-    { href: "/", label: "หน้าหลัก" },
-    ...(courseId ? [{ href: `/courses/${courseId}/map`, label: T.masteryMap }] : []),
-    { href: "/learning-path", label: T.learningPath },
-    { href: "/reports/formats", label: `รายงาน${T.questionFormat}` },
+    { href: "/", label: `${T.course}ทั้งหมด` },
     ...(isOwner ? [{ href: "/admin", label: "จัดการระบบ" }] : []),
   ];
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname.startsWith("/courses/") : pathname.startsWith(href));
 
   async function logout() {
     await api().POST("/auth/logout");

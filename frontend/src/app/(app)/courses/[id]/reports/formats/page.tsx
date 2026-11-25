@@ -1,25 +1,27 @@
 import { EmptyState, PageHeader } from "@/components/StateViews";
-import { getDefaultCourse } from "@/lib/api/queries";
+import { getCourse, getCourseGraph } from "@/lib/api/queries";
 import { serverApi, unwrap } from "@/lib/api/server";
 import { T } from "@/lib/terms";
 import { card, cn, percent } from "@/lib/ui";
 
 export const metadata = { title: `รายงาน${T.questionFormat}` };
 
-export default async function FormatReportPage() {
-  const course = await getDefaultCourse();
-  if (!course) return <EmptyState title={`ยังไม่มี${T.course}`} />;
+export default async function FormatReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const api = await serverApi();
-  const stats = await api
-    .GET("/courses/{courseId}/format-report", { params: { path: { courseId: course.id } } })
-    .then(unwrap);
+  const [course, graph, stats] = await Promise.all([
+    getCourse(id),
+    getCourseGraph(id),
+    api.GET("/courses/{courseId}/format-report", { params: { path: { courseId: id } } }).then(unwrap),
+  ]);
+  const examples = graph.questionFormats.slice(0, 3).map((f) => f.name).join(", ");
   const answeredAny = stats.some((s) => s.answered > 0);
 
   return (
     <div>
       <PageHeader
         title={`รายงาน${T.questionFormat}`}
-        description={`ความแม่นยำแยกตาม${T.questionFormat} (เช่น Data sufficiency, คณิตคิดนอกกรอบ) ไม่ขึ้นกับ${T.concept}ที่ออกสอบ`}
+        description={`${course.name} · ความแม่นยำแยกตาม${T.questionFormat}${examples ? ` (เช่น ${examples})` : ""} ไม่ขึ้นกับ${T.concept}ที่ออกสอบ`}
       />
       {!answeredAny ? (
         <EmptyState title="ยังไม่มีข้อมูล">ทำ{T.quiz}หรือ{T.exam}ก่อน แล้วรายงานจะแสดงที่นี่</EmptyState>

@@ -3,7 +3,7 @@ import { Markdown } from "@/components/Markdown";
 import { MasteryChip } from "@/components/MasteryChip";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState } from "@/components/StateViews";
-import { getCourseGraph, getDefaultCourse } from "@/lib/api/queries";
+import { getCourse, getCourseGraph } from "@/lib/api/queries";
 import { serverApi, unwrap } from "@/lib/api/server";
 import type { ConceptRef } from "@/lib/api/types";
 import { T } from "@/lib/terms";
@@ -12,18 +12,14 @@ import { btn, card, cn } from "@/lib/ui";
 export default async function ConceptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const api = await serverApi();
-  const [concept, course] = await Promise.all([
-    api.GET("/concepts/{conceptId}", { params: { path: { conceptId: id } } }).then(unwrap),
-    getDefaultCourse(),
+  const concept = await api.GET("/concepts/{conceptId}", { params: { path: { conceptId: id } } }).then(unwrap);
+  const [course, graph, mastery] = await Promise.all([
+    getCourse(concept.courseId),
+    getCourseGraph(concept.courseId),
+    api.GET("/courses/{courseId}/mastery", { params: { path: { courseId: concept.courseId } } }).then(unwrap),
   ]);
-  const [graph, mastery] = course
-    ? await Promise.all([
-        getCourseGraph(course.id),
-        api.GET("/courses/{courseId}/mastery", { params: { path: { courseId: course.id } } }).then(unwrap),
-      ])
-    : [null, []];
   const levelOf = new Map(mastery.map((m) => [m.conceptId, m.level]));
-  const nameOf = new Map(graph?.concepts.map((c) => [c.id, c.name]) ?? []);
+  const nameOf = new Map(graph.concepts.map((c) => [c.id, c.name]));
   const toRef = (cid: string): ConceptRef => ({ id: cid, name: nameOf.get(cid) ?? "แนวคิด", level: levelOf.get(cid) });
   const prereqs = concept.prerequisiteIds.map(toRef);
   const dependents = concept.dependentIds.map(toRef);
@@ -33,6 +29,10 @@ export default async function ConceptPage({ params }: { params: Promise<{ id: st
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <article className="min-w-0">
         <p className="text-sm text-slate-600">
+          <Link href={`/courses/${course.id}`} className="text-blue-800 hover:underline">
+            {course.name}
+          </Link>
+          <span aria-hidden="true"> / </span>
           {T.topic}: {concept.topicName ?? "-"}
         </p>
         <h1 className="mt-1 text-2xl font-bold">{concept.name}</h1>
@@ -42,18 +42,16 @@ export default async function ConceptPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {course && canQuiz ? (
+          {canQuiz ? (
             <StartSessionButton request={{ kind: "quiz", courseId: course.id, conceptId: concept.id }} testId="start-quiz">
               เริ่ม{T.quiz}เรื่องนี้
             </StartSessionButton>
           ) : (
             <p className="text-sm text-slate-600">ยังไม่มี{T.question}สำหรับ{T.concept}นี้ (แจ้งผู้ดูแลเนื้อหาแล้ว)</p>
           )}
-          {course && (
-            <Link href={`/courses/${course.id}/map`} className={btn.secondary}>
-              ดูบน{T.masteryMap}
-            </Link>
-          )}
+          <Link href={`/courses/${course.id}/map`} className={btn.secondary}>
+            ดูบน{T.masteryMap}
+          </Link>
         </div>
 
         <section className={cn(card, "mt-6")} aria-labelledby="lesson-h">

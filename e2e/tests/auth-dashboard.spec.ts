@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { loadFixtures } from "../lib/fixtures";
 
 test.describe("login and dashboard", () => {
   test("unauthenticated visitor is sent to the login page", async ({ browser }) => {
@@ -10,8 +11,19 @@ test.describe("login and dashboard", () => {
     await context.close();
   });
 
-  test("logged-in Learner sees a Recommendation or the Placement Test prompt", async ({ page }) => {
+  test("logged-in Learner picks a Course from the home page", async ({ page }) => {
+    const { courseId } = loadFixtures();
     await page.goto("/");
+    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page.getByTestId("course-card").first()).toBeVisible();
+
+    await page.locator(`a[href="/courses/${courseId}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`/courses/${courseId}$`));
+  });
+
+  test("Course dashboard shows a Recommendation or the Placement Test prompt", async ({ page }) => {
+    const { courseId } = loadFixtures();
+    await page.goto(`/courses/${courseId}`);
     await expect(page).not.toHaveURL(/\/login/);
 
     // A brand-new Learner has only Unassessed Concepts, so the dashboard shows either

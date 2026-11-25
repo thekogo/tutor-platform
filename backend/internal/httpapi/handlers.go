@@ -113,13 +113,24 @@ func courseSummary(c store.Course) CourseSummary {
 
 // ListCourses lists Courses.
 func (s *Server) ListCourses(ctx context.Context, _ ListCoursesRequestObject) (ListCoursesResponseObject, error) {
+	a, err := actorFrom(ctx)
+	if err != nil {
+		return nil, err
+	}
 	cs, err := s.app.ListCourses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	done, err := s.app.PlacementDoneCourses(ctx, a.LearnerID)
 	if err != nil {
 		return nil, err
 	}
 	out := ListCourses200JSONResponse{}
 	for _, c := range cs {
-		out = append(out, courseSummary(c))
+		sum := courseSummary(c)
+		d := done[c.ID]
+		sum.PlacementDone = &d
+		out = append(out, sum)
 	}
 	return out, nil
 }
@@ -190,7 +201,7 @@ func (s *Server) GetConcept(ctx context.Context, req GetConceptRequestObject) (G
 		return nil, err
 	}
 	return GetConcept200JSONResponse{
-		Id: d.ID, Slug: d.Slug, Name: d.Name, TopicId: d.TopicID, PrerequisiteIds: d.PrerequisiteIDs, HasLesson: &d.HasLesson,
+		Id: d.ID, CourseId: d.CourseID, Slug: d.Slug, Name: d.Name, TopicId: d.TopicID, PrerequisiteIds: d.PrerequisiteIDs, HasLesson: &d.HasLesson,
 		TopicName: &d.TopicName, LessonMd: d.LessonMd, DependentIds: d.DependentIDs, Mastery: masteryJSON(d.Mastery),
 		ActiveQuestionCount: &d.ActiveQuestionCount,
 	}, nil

@@ -552,6 +552,10 @@ func TestPlacementIsAdaptiveAndBounded(t *testing.T) {
 	if !done {
 		t.Fatal("placementDone not set")
 	}
+	byCourse := must[map[uuid.UUID]bool](t)(e.App.PlacementDoneCourses(ctx, a.LearnerID))
+	if len(byCourse) != 1 || !byCourse[e.CourseID] {
+		t.Fatalf("placement done per course %v, want only %v", byCourse, e.CourseID)
+	}
 }
 
 func TestLearningPath(t *testing.T) {

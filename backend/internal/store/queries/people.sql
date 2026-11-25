@@ -50,3 +50,8 @@ SELECT * FROM invites WHERE token_hash = $1 FOR UPDATE;
 
 -- name: UseInvite :exec
 UPDATE invites SET used_by = $2, used_at = now() WHERE id = $1 AND used_by IS NULL;
+
+-- name: PlacementDoneCourses :many
+SELECT DISTINCT s.course_id FROM study_sessions s
+WHERE s.learner_id = $1 AND s.kind = 'placement' AND s.finished_at IS NOT NULL
+  AND EXISTS (SELECT 1 FROM answers a WHERE a.session_id = s.id);

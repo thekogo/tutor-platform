@@ -1,149 +1,101 @@
 import Link from "next/link";
-import { MasteryChip } from "@/components/MasteryChip";
-import { RecommendationCard } from "@/components/RecommendationCard";
-import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, PageHeader } from "@/components/StateViews";
-import { getDefaultCourse, getMe } from "@/lib/api/queries";
+import { getCourses, getMe } from "@/lib/api/queries";
 import { serverApi, unwrap, unwrapOptional } from "@/lib/api/server";
-import { MASTERY_LEVELS } from "@/lib/api/types";
-import { formatTimeLimit } from "@/lib/countdown";
+import { MASTERY_LEVELS, type CourseSummary } from "@/lib/api/types";
 import { countByLevel } from "@/lib/graph-layout";
-import { T } from "@/lib/terms";
-import { btn, card, cn, percent } from "@/lib/ui";
+import { MASTERY_LEVEL_LABEL, T } from "@/lib/terms";
+import { btn, card, cn } from "@/lib/ui";
 
-export const metadata = { title: "หน้าหลัก" };
+/** Solid fills for the progress bar (Tailwind needs literal class names). */
+const BAR_CLASS = { weak: "bg-level-weak", developing: "bg-level-developing", mastered: "bg-level-mastered" } as const;
 
-export default async function DashboardPage() {
-  const [me, course] = await Promise.all([getMe(), getDefaultCourse()]);
-  if (!course) {
-    return (
-      <EmptyState title={`ยังไม่มี${T.course}`}>
-        เจ้าของระบบยังไม่ได้นำเข้าเนื้อหา กรุณากลับมาใหม่ภายหลัง
-      </EmptyState>
-    );
-  }
+export const metadata = { title: `เลือก${T.course}` };
+
+export default async function CourseSelectPage() {
+  const [me, courses] = await Promise.all([getMe(), getCourses()]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title={`สวัสดี ${me.name}`} description={`เลือก${T.course}ที่ต้องการเรียน ความคืบหน้าของแต่ละ${T.course}แยกจากกัน`} />
+      {courses.length === 0 ? (
+        <EmptyState title={`ยังไม่มี${T.course}`}>เจ้าของระบบยังไม่ได้นำเข้าเนื้อหา กรุณากลับมาใหม่ภายหลัง</EmptyState>
+      ) : (
+        <ul className="grid gap-5 md:grid-cols-2" aria-label={`${T.course}ทั้งหมด`}>
+          {courses.map((c) => (
+            <li key={c.id}>
+              <CourseCard course={c} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+async function CourseCard({ course }: { course: CourseSummary }) {
   const api = await serverApi();
   const p = { params: { path: { courseId: course.id } } };
-  const [recs, exams, mastery, graph, path] = await Promise.all([
-    api.GET("/courses/{courseId}/recommendations", p).then(unwrap),
-    api.GET("/courses/{courseId}/exams", p).then(unwrap),
-    api.GET("/courses/{courseId}/mastery", p).then(unwrap),
+  const [graph, mastery, path] = await Promise.all([
     api.GET("/courses/{courseId}", p).then(unwrap),
+    api.GET("/courses/{courseId}/mastery", p).then(unwrap),
     api.GET("/courses/{courseId}/learning-path", p).then(unwrapOptional),
   ]);
-  const [top, ...others] = recs;
+  const total = graph.concepts.length;
   const counts = countByLevel(
     graph.concepts.map((c) => c.id),
     mastery,
   );
+  const started = counts.unassessed < total;
+  const currentStep = path?.currentStepConceptId ? path.steps.find((s) => s.id === path.currentStepConceptId) : undefined;
+  const headingId = `course-${course.id}`;
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={`สวัสดี ${me.name}`} description={`${course.name}${course.goal ? ` · ${course.goal}` : ""}`} />
-
-      {!me.placementDone && (
-        <section data-testid="placement-prompt" className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm" aria-labelledby="placement-h">
-          <h2 id="placement-h" className="text-lg font-semibold">
-            เริ่มต้นด้วย{T.placementTest} (ไม่บังคับ)
-          </h2>
-          <p className="mt-1 text-slate-700">
-            ทำแบบทดสอบสั้น ๆ ที่ปรับตามคำตอบของคุณ เพื่อให้ระบบรู้{T.masteryLevel}เริ่มต้นและแนะนำได้แม่นยำขึ้น
-            ข้ามได้ แล้วระบบจะเรียนรู้จาก{T.quiz}ที่คุณทำแทน
-          </p>
-          <div className="mt-3">
-            <StartSessionButton request={{ kind: "placement", courseId: course.id }}>เริ่ม{T.placementTest}</StartSessionButton>
-          </div>
-        </section>
-      )}
-
-      {path && path.currentStepConceptId && (
-        <section className={cn(card, "flex flex-wrap items-center justify-between gap-3")} aria-label={T.learningPath}>
-          <p>
-            คุณกำลังเรียนตาม{T.learningPath} ขั้นปัจจุบัน:{" "}
-            <strong>{path.steps.find((s) => s.id === path.currentStepConceptId)?.name}</strong>
-          </p>
-          <Link href="/learning-path" className={btn.secondary}>
-            ไปที่{T.learningPath}
-          </Link>
-        </section>
-      )}
-
-      <section aria-labelledby="rec-h">
-        <h2 id="rec-h" className="sr-only">
-          {T.recommendation}
+    <article data-testid="course-card" className={cn(card, "flex h-full flex-col gap-4")} aria-labelledby={headingId}>
+      <div>
+        <h2 id={headingId} className="text-xl font-semibold text-slate-900">
+          {course.name}
         </h2>
-        {top ? (
-          <RecommendationCard recommendation={top} courseId={course.id} top />
-        ) : (
-          <EmptyState title={`ยังไม่มี${T.recommendation}ในตอนนี้`}>
-            {mastery.some((m) => m.level !== "unassessed")
-              ? "ยอดเยี่ยม! ไม่พบแนวคิดที่ยังอ่อน ลองทำชุดข้อสอบเพื่อตรวจสอบความพร้อม"
-              : `ทำ${T.placementTest}หรือ${T.quiz}สักชุด เพื่อให้ระบบเริ่มวิเคราะห์จุดอ่อนของคุณ`}
-          </EmptyState>
-        )}
-      </section>
+        {course.goal && <p className="mt-1 text-sm text-slate-600">{course.goal}</p>}
+        <p className="mt-2 text-sm text-slate-600">
+          {graph.topics.length} {T.topic} · {total} {T.concept}
+        </p>
+      </div>
 
-      {others.length > 0 && (
-        <section aria-labelledby="others-h">
-          <h2 id="others-h" className="mb-3 text-lg font-semibold">
-            {T.rootCauses}อื่น ๆ
-          </h2>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {others.map((r) => (
-              <RecommendationCard key={`${r.kind}-${r.conceptId}-${r.targetConceptId}`} recommendation={r} courseId={course.id} headingLevel="h3" />
-            ))}
+      {total > 0 && (
+        <div>
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+            {(["mastered", "developing", "weak"] as const).map((l) =>
+              counts[l] > 0 ? <div key={l} className={BAR_CLASS[l]} style={{ width: `${(counts[l] / total) * 100}%` }} /> : null,
+            )}
           </div>
-        </section>
+          <p className="mt-2 text-xs text-slate-600">
+            {started
+              ? MASTERY_LEVELS.filter((l) => l !== "unassessed")
+                  .map((l) => `${MASTERY_LEVEL_LABEL[l]} ${counts[l]}`)
+                  .join(" · ") + ` · ${MASTERY_LEVEL_LABEL.unassessed} ${counts.unassessed}`
+              : `ยังไม่ได้เริ่มเรียน${T.course}นี้`}
+          </p>
+        </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className={card} aria-labelledby="map-h">
-          <h2 id="map-h" className="text-lg font-semibold">
-            {T.masteryMap}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            สรุป{T.masteryLevel}จาก {graph.concepts.length} {T.concept}
-          </p>
-          <ul className="mt-3 grid grid-cols-2 gap-2">
-            {MASTERY_LEVELS.map((l) => (
-              <li key={l} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-                <MasteryChip level={l} />
-                <span className="text-lg font-semibold tabular-nums">{counts[l]}</span>
-              </li>
-            ))}
-          </ul>
-          <Link href={`/courses/${course.id}/map`} className={cn(btn.secondary, "mt-4")}>
-            เปิด{T.masteryMap}
-          </Link>
-        </section>
+      <ul className="flex flex-col gap-1 text-sm text-slate-700">
+        <li>
+          {T.placementTest}: {course.placementDone ? "ทำแล้ว" : "ยังไม่ทำ"}
+        </li>
+        {currentStep && (
+          <li>
+            {T.learningPath}: <strong>{currentStep.name}</strong>
+          </li>
+        )}
+      </ul>
 
-        <section className={card} aria-labelledby="exams-h">
-          <h2 id="exams-h" className="text-lg font-semibold">
-            {T.exam}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">จับเวลาเหมือนสอบจริง เฉลยจะแสดงหลังส่งข้อสอบ</p>
-          {exams.length === 0 ? (
-            <p className="mt-3 text-slate-600">ยังไม่มี{T.exam}</p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-3">
-              {exams.map((e) => (
-                <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3">
-                  <div>
-                    <p className="font-medium">{e.name}</p>
-                    <p className="text-sm text-slate-600">
-                      {e.questionCount} ข้อ · {formatTimeLimit(e.timeLimitSeconds)}
-                      {e.lastScore != null && ` · คะแนนล่าสุด ${percent(e.lastScore)}`}
-                    </p>
-                  </div>
-                  <StartSessionButton request={{ kind: "exam", courseId: course.id, examId: e.id }} variant="secondary">
-                    เริ่มสอบ
-                  </StartSessionButton>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <div className="mt-auto">
+        <Link href={`/courses/${course.id}`} className={btn.primary}>
+          {started ? "เรียนต่อ" : "เริ่มเรียน"}
+          <span className="sr-only"> {course.name}</span>
+        </Link>
       </div>
-    </div>
+    </article>
   );
 }

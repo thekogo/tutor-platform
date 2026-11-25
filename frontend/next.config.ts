@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
+  // These pages moved under /courses/[id]/ when the platform became multi-Course.
+  async redirects() {
+    return [
+      { source: "/learning-path", destination: "/", permanent: false },
+      { source: "/reports/formats", destination: "/", permanent: false },
+    ];
+  },
   experimental: {
     // forbidden() → app/forbidden.tsx with a real 403 status (non-Owner on /admin).
     authInterrupts: true,

@@ -132,6 +132,7 @@ type Concept struct {
 // ConceptDetail defines model for ConceptDetail.
 type ConceptDetail struct {
 	ActiveQuestionCount *int                 `json:"activeQuestionCount,omitempty"`
+	CourseId            openapi_types.UUID   `json:"courseId"`
 	DependentIds        []openapi_types.UUID `json:"dependentIds"`
 	HasLesson           *bool                `json:"hasLesson,omitempty"`
 	Id                  openapi_types.UUID   `json:"id"`
@@ -162,13 +163,16 @@ type ContentRequest struct {
 
 // CourseGraph defines model for CourseGraph.
 type CourseGraph struct {
-	Concepts        []Concept          `json:"concepts"`
-	Goal            *string            `json:"goal,omitempty"`
-	Id              openapi_types.UUID `json:"id"`
-	Name            string             `json:"name"`
-	QuestionFormats []QuestionFormat   `json:"questionFormats"`
-	Slug            string             `json:"slug"`
-	Topics          []Topic            `json:"topics"`
+	Concepts []Concept          `json:"concepts"`
+	Goal     *string            `json:"goal,omitempty"`
+	Id       openapi_types.UUID `json:"id"`
+	Name     string             `json:"name"`
+
+	// PlacementDone The current Learner finished a Placement Test in this Course
+	PlacementDone   *bool            `json:"placementDone,omitempty"`
+	QuestionFormats []QuestionFormat `json:"questionFormats"`
+	Slug            string           `json:"slug"`
+	Topics          []Topic          `json:"topics"`
 }
 
 // CourseSummary defines model for CourseSummary.
@@ -176,7 +180,10 @@ type CourseSummary struct {
 	Goal *string            `json:"goal,omitempty"`
 	Id   openapi_types.UUID `json:"id"`
 	Name string             `json:"name"`
-	Slug string             `json:"slug"`
+
+	// PlacementDone The current Learner finished a Placement Test in this Course
+	PlacementDone *bool  `json:"placementDone,omitempty"`
+	Slug          string `json:"slug"`
 }
 
 // CreateSessionRequest defines model for CreateSessionRequest.
@@ -255,11 +262,13 @@ type Invite struct {
 
 // Learner defines model for Learner.
 type Learner struct {
-	Email         openapi_types.Email `json:"email"`
-	Id            openapi_types.UUID  `json:"id"`
-	IsOwner       bool                `json:"isOwner"`
-	Name          string              `json:"name"`
-	PlacementDone *bool               `json:"placementDone,omitempty"`
+	Email   openapi_types.Email `json:"email"`
+	Id      openapi_types.UUID  `json:"id"`
+	IsOwner bool                `json:"isOwner"`
+	Name    string              `json:"name"`
+
+	// PlacementDone Finished a Placement Test in any Course
+	PlacementDone *bool `json:"placementDone,omitempty"`
 }
 
 // LearningPath defines model for LearningPath.

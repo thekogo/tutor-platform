@@ -27,8 +27,8 @@ export default async function SessionResultPage({ params }: { params: Promise<{ 
       <PageHeader
         title={`ผลลัพธ์${SESSION_KIND_LABEL[result.kind]}`}
         actions={
-          <Link href="/" className={btn.secondary}>
-            กลับหน้าหลัก
+          <Link href={`/courses/${session.courseId}`} className={btn.secondary}>
+            กลับไปที่{T.course}
           </Link>
         }
       />

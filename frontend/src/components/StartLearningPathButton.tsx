@@ -28,7 +28,7 @@ export function StartLearningPathButton({ courseId, rootConceptId, targetConcept
       body: { rootConceptId, targetConceptId },
     });
     if (data) {
-      router.push("/learning-path");
+      router.push(`/courses/${courseId}/learning-path`);
       router.refresh();
       return;
     }
