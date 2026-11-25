@@ -76,7 +76,7 @@ describe("SessionRunner — Quiz", () => {
       await answerFirstChoice(user);
       await user.click(await screen.findByTestId("next-question"));
     }
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/sessions/${session.id}/result`));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/sessions/result?id=${session.id}`));
   });
 });
 
@@ -173,7 +173,7 @@ describe("SessionRunner — Exam", () => {
       await act(async () => {
         vi.advanceTimersByTime(EXAMS[1].timeLimitSeconds * 1000 + 1000);
       });
-      await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/sessions/${session.id}/result`));
+      await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/sessions/result?id=${session.id}`));
     } finally {
       vi.useRealTimers();
     }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api, errorMessage } from "@/lib/api/client";
 import type { CreateSessionRequest } from "@/lib/api/types";
 import { btn } from "@/lib/ui";
+import { routes } from "@/lib/routes";
 
 type Props = {
   request: CreateSessionRequest;
@@ -25,7 +26,7 @@ export function StartSessionButton({ request, children, variant = "primary", cla
     setErr(null);
     const { data, error } = await api().POST("/sessions", { body: request });
     if (data) {
-      router.push(`/sessions/${data.id}`);
+      router.push(routes.session(data.id));
       return;
     }
     setPending(false);

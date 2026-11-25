@@ -1,15 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { api, errorMessage } from "@/lib/api/client";
+import { api, errorMessage, invalidate } from "@/lib/api/client";
 import { T } from "@/lib/terms";
 import { btn } from "@/lib/ui";
 
 type Props = { questionId?: string; withInput?: boolean };
 
 export function RetireQuestionButton({ questionId, withInput = false }: Props) {
-  const router = useRouter();
   const inputId = useId();
   const [value, setValue] = useState(questionId ?? "");
   const [pending, setPending] = useState(false);
@@ -27,7 +25,7 @@ export function RetireQuestionButton({ questionId, withInput = false }: Props) {
     setPending(false);
     if (response.ok) {
       setMsg({ ok: true, text: `เลิกใช้${T.question}แล้ว` });
-      router.refresh();
+      invalidate();
     } else {
       setMsg({ ok: false, text: errorMessage(error, "ไม่สำเร็จ") });
     }

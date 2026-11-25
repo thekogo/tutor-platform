@@ -11,6 +11,7 @@ import { FlagDialog } from "./FlagDialog";
 import { Markdown } from "./Markdown";
 import { MasteryChip } from "./MasteryChip";
 import { TutorChat } from "./TutorChat";
+import { routes } from "@/lib/routes";
 
 type Phase = "loading" | "answering" | "submitting" | "feedback" | "finishing" | "error";
 
@@ -52,7 +53,7 @@ export function SessionRunner({ session, title }: Props) {
       params: { path: { sessionId: session.id } },
     });
     if (response.ok) {
-      router.push(`/sessions/${session.id}/result`);
+      router.push(routes.sessionResult(session.id));
       return;
     }
     finishing.current = false;
@@ -85,7 +86,7 @@ export function SessionRunner({ session, title }: Props) {
 
   useEffect(() => {
     if (session.finishedAt) {
-      router.replace(`/sessions/${session.id}/result`);
+      router.replace(routes.sessionResult(session.id));
       return;
     }
     // Initial fetch; state updates happen after the request resolves.

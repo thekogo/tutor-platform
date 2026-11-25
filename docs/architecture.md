@@ -102,7 +102,7 @@ Slugs from `graph.yaml` are stable external IDs; DB uses UUIDs internally.
 
 ## Frontend
 
-Next.js App Router, TypeScript strict, Tailwind. Thai UI copy. Server Components fetch via a typed client generated from `api/openapi.yaml`; mutations through client components. Math: `react-markdown` + `remark-math` + `rehype-katex`. Mastery Map: `@xyflow/react` + `dagre` layout, Concepts colored by Mastery Level, grouped by Topic.
+Next.js App Router, TypeScript strict, Tailwind. Thai UI copy. Built as a static export (`output: "export"`) and served by nginx, which proxies same-origin `/api/*` to the backend; pages load data in the browser via a typed client generated from `api/openapi.yaml`, and ids travel as `?id=` query params. Math: `react-markdown` + `remark-math` + `rehype-katex`. Mastery Map: `@xyflow/react` + `dagre` layout, Concepts colored by Mastery Level, grouped by Topic.
 
 Pages: login · `/` Course selection (one card per Course with the Learner's Mastery summary, Placement Test status and active Learning Path) · under `/courses/[id]`: dashboard (top Recommendation with its reason path, other Root Causes, Mastery Map preview), `map`, `learning-path`, `reports/formats` · `/concepts/[id]` (Lesson + start Quiz; Course from `ConceptDetail.courseId`) · `/sessions/[id]` (Quiz/Diagnostic/Placement one-at-a-time with immediate feedback + Flag; Exam timed, feedback at end) · `/sessions/[id]/result` · `/admin` (Owner: invites, Flags, Content Requests, learners). Placement Test status is per Course (`CourseSummary.placementDone`). Branding lives in `frontend/src/lib/brand.ts` and is Course-neutral.
 

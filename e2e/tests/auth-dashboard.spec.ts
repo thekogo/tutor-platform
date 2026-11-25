@@ -17,13 +17,19 @@ test.describe("login and dashboard", () => {
     await expect(page).not.toHaveURL(/\/login/);
     await expect(page.getByTestId("course-card").first()).toBeVisible();
 
-    await page.locator(`a[href="/courses/${courseId}"]`).click();
-    await expect(page).toHaveURL(new RegExp(`/courses/${courseId}$`));
+    await page.locator(`a[href="/courses?id=${courseId}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`/courses\\?id=${courseId}$`));
+  });
+
+  test("old path-style Course URLs redirect to the ?id= pages", async ({ page }) => {
+    const { courseId } = loadFixtures();
+    await page.goto(`/courses/${courseId}/map`);
+    await expect(page).toHaveURL(new RegExp(`/courses/map\\?id=${courseId}$`));
   });
 
   test("Course dashboard shows a Recommendation or the Placement Test prompt", async ({ page }) => {
     const { courseId } = loadFixtures();
-    await page.goto(`/courses/${courseId}`);
+    await page.goto(`/courses?id=${courseId}`);
     await expect(page).not.toHaveURL(/\/login/);
 
     // A brand-new Learner has only Unassessed Concepts, so the dashboard shows either

@@ -1,32 +1,31 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-// /api/* is forwarded to the Go backend at request time by src/proxy.ts
-// (so BACKEND_URL is a runtime env var, not baked in at build time).
-// In mock mode (NEXT_PUBLIC_API_MOCKING=enabled) the catch-all route handler
-// at src/app/api/[...path]/route.ts serves the MSW handlers instead.
-const nextConfig: NextConfig = {
-  output: "standalone",
-  reactStrictMode: true,
-  poweredByHeader: false,
-  // These pages moved under /courses/[id]/ when the platform became multi-Course.
-  async redirects() {
-    return [
-      { source: "/learning-path", destination: "/", permanent: false },
-      { source: "/reports/formats", destination: "/", permanent: false },
-    ];
-  },
-  experimental: {
-    // forbidden() → app/forbidden.tsx with a real 403 status (non-Owner on /admin).
-    authInterrupts: true,
-  },
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
+/**
+ * `next build` emits a static site into out/ (output: "export"), served by
+ * nginx (see Dockerfile and nginx/), which also proxies /api/* to the Go
+ * backend and redirects legacy URLs.
+ *
+ * `next dev` has no nginx in front, so the dev server proxies /api/* to
+ * BACKEND_URL itself (rewrites are dev-only: a static export cannot use them).
+ */
+export default function config(phase: string): NextConfig {
+  const isDev = phase === PHASE_DEVELOPMENT_SERVER;
+  const backend = (process.env.BACKEND_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+  return {
+    ...(isDev
+      ? { rewrites: async () => [{ source: "/api/:path*", destination: `${backend}/api/:path*` }] }
+      : { output: "export" }),
+    reactStrictMode: true,
+    poweredByHeader: false,
+    images: { unoptimized: true },
+    turbopack: {
+      rules: {
+        "*.css": {
+          loaders: ["@tailwindcss/turbopack"],
+          as: "*.css",
+        },
       },
     },
-  },
-};
-
-export default nextConfig;
+  };
+}

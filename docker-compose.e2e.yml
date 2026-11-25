@@ -19,9 +19,5 @@ services:
   frontend:
     build:
       args:
-        NEXT_PUBLIC_API_MOCKING: "false"
         NEXT_PUBLIC_DEV_LOGIN: "true"
     image: tutor-platform/frontend:e2e
-    environment:
-      NEXT_PUBLIC_API_MOCKING: "false"
-      NEXT_PUBLIC_DEV_LOGIN: "true"

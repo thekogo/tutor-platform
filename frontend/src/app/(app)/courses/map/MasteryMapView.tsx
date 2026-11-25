@@ -1,21 +1,27 @@
+"use client";
+
 import Link from "next/link";
 import { MasteryChip } from "@/components/MasteryChip";
 import { MasteryMap } from "@/components/MasteryMap";
 import { EmptyState, PageHeader } from "@/components/StateViews";
-import { getCourseGraph } from "@/lib/api/queries";
-import { serverApi, unwrap } from "@/lib/api/server";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
+import { getCourseGraph, getMastery } from "@/lib/api/queries";
+import { useLoad } from "@/lib/api/use-load";
+import type { CourseGraph, Mastery } from "@/lib/api/types";
 import { masteryByConcept } from "@/lib/graph-layout";
+import { routes } from "@/lib/routes";
 import { T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 
-export const metadata = { title: T.masteryMap };
+export function MasteryMapView() {
+  const id = useIdParam();
+  const state = useLoad(id && `map:${id}`, () => Promise.all([getCourseGraph(id!), getMastery(id!)]));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{([course, mastery]) => <MasteryMapPage course={course} mastery={mastery} />}</Loaded>;
+}
 
-export default async function MasteryMapPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const api = await serverApi();
-  const [course, mastery] = await Promise.all([
-    getCourseGraph(id),
-    api.GET("/courses/{courseId}/mastery", { params: { path: { courseId: id } } }).then(unwrap),
-  ]);
+function MasteryMapPage({ course, mastery }: { course: CourseGraph; mastery: Mastery[] }) {
   const byConcept = masteryByConcept(mastery);
 
   return (
@@ -45,7 +51,7 @@ export default async function MasteryMapPage({ params }: { params: Promise<{ id:
                         const m = byConcept.get(c.id);
                         return (
                           <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
-                            <Link href={`/concepts/${c.id}`} className="text-blue-800 hover:underline">
+                            <Link href={routes.concept(c.id)} className="text-blue-800 hover:underline">
                               {c.name}
                             </Link>
                             <MasteryChip level={m?.level ?? "unassessed"} />

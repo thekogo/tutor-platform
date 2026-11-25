@@ -72,7 +72,7 @@ cd backend && go run ./cmd/server
 cd frontend && pnpm install && pnpm dev       # BACKEND_URL=http://localhost:8080
 ```
 
-Frontend-only work without a backend: `NEXT_PUBLIC_API_MOCKING=true pnpm dev` (mocked API).
+The frontend is a static export (`next build` → `frontend/out/`). In Docker it is served by nginx, which also proxies `/api/*` to `BACKEND_URL`; pages with an id take it as `?id=` (e.g. `/courses?id=…`), and nginx redirects the old `/courses/<id>` style URLs.
 
 ## Make targets
 

@@ -1,6 +1,6 @@
 /**
  * MSW handlers implementing api/openapi.yaml against the in-memory mock db.
- * Used by mock mode (NEXT_PUBLIC_API_MOCKING=enabled) and by Vitest.
+ * Used by Vitest.
  */
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import type {
@@ -24,7 +24,6 @@ import type {
   SessionResult,
   StudySession,
 } from "@/lib/api/types";
-import { SESSION_COOKIE } from "@/lib/env";
 import {
   COURSE_ID,
   EXAMS,
@@ -42,6 +41,9 @@ import {
 import { mockId, newId } from "./ids";
 import { lessonFor } from "./lessons";
 import { mockQuestions, questionById, type MockQuestion } from "./questions";
+
+/** Name of the opaque session cookie set by the backend. */
+const SESSION_COOKIE = "tp_session";
 
 const api = (path: string) => `*/api${path}`;
 

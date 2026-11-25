@@ -11,12 +11,12 @@ test("start a Quiz from a Concept page, answer, see the Explanation, Flag the Qu
   ).toBeTruthy();
 
   // Concept page: Lesson + start Quiz
-  await page.goto(`/concepts/${quizConceptId}`);
+  await page.goto(`/concepts?id=${quizConceptId}`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.getByTestId("start-quiz").click();
 
   // Session page: one Question at a time
-  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]{36}/);
+  await expect(page).toHaveURL(/\/sessions\?id=[0-9a-f-]{36}/);
   const question = page.getByTestId("question");
   await expect(question).toBeVisible();
 
