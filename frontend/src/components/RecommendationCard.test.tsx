@@ -34,7 +34,7 @@ describe("RecommendationCard", () => {
     for (const step of steps) expect(step).toHaveTextContent(/ระดับความเข้าใจ: (อ่อน|กำลังพัฒนา|เชี่ยวชาญ|ยังไม่ประเมิน)/);
 
     // Each step links to its Concept page.
-    expect(within(steps[0]).getByRole("link")).toHaveAttribute("href", `/concepts/${top.conceptId}`);
+    expect(within(steps[0]).getByRole("link")).toHaveAttribute("href", `/concepts?id=${top.conceptId}`);
   });
 
   it("still shows a reason when the path is empty", () => {
@@ -51,13 +51,13 @@ describe("RecommendationCard", () => {
     render(<RecommendationCard recommendation={diagnose} courseId={COURSE_ID} />);
     expect(screen.getByText(/ต้องวัดก่อน/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "ทำควิซวินิจฉัย" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(expect.stringMatching(/^\/sessions\//)));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(expect.stringMatching(/^\/sessions\?id=/)));
   });
 
   it("starts the Learning Path from a study Recommendation", async () => {
     const [top] = await fetchRecommendations();
     render(<RecommendationCard recommendation={top} courseId={COURSE_ID} top />);
     await userEvent.click(screen.getByRole("button", { name: "เริ่มเส้นทางการเรียน" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/courses/${COURSE_ID}/learning-path`));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/courses/learning-path?id=${COURSE_ID}`));
   });
 });

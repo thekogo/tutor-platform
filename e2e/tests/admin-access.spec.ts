@@ -4,14 +4,11 @@ import { LEARNER_STATE, OWNER_STATE } from "../lib/env";
 
 test.describe("/admin is Owner-only", () => {
   test("non-owner Learner cannot see the admin page", async ({ page }) => {
-    const response = await page.goto("/admin");
+    await page.goto("/admin");
 
-    // Either redirected away, or a 403/404 page; never the admin UI.
+    // The static page checks /me in the browser and shows the 403 view; never the admin UI.
+    await expect(page.getByTestId("forbidden")).toBeVisible();
     await expect(page.getByTestId("admin-page")).toHaveCount(0);
-    const redirected = !new URL(page.url()).pathname.startsWith("/admin");
-    const denied = response !== null && [403, 404].includes(response.status());
-    const forbiddenShown = await page.getByTestId("forbidden").isVisible();
-    expect(redirected || denied || forbiddenShown, `landed on ${page.url()}`).toBe(true);
   });
 
   test("non-owner Learner gets 403 from admin API", async () => {

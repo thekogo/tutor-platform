@@ -1,23 +1,39 @@
+"use client";
+
 import Link from "next/link";
 import { Markdown } from "@/components/Markdown";
 import { MasteryChip } from "@/components/MasteryChip";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState } from "@/components/StateViews";
-import { getCourse, getCourseGraph } from "@/lib/api/queries";
-import { serverApi, unwrap } from "@/lib/api/server";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
+import { api, unwrap } from "@/lib/api/client";
+import { getCourse, getCourseGraph, getMastery } from "@/lib/api/queries";
+import { useLoad } from "@/lib/api/use-load";
 import type { ConceptRef } from "@/lib/api/types";
+import { routes } from "@/lib/routes";
 import { T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 import { btn, card, cn } from "@/lib/ui";
 
-export default async function ConceptPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const api = await serverApi();
-  const concept = await api.GET("/concepts/{conceptId}", { params: { path: { conceptId: id } } }).then(unwrap);
+async function loadConcept(id: string) {
+  const concept = await api().GET("/concepts/{conceptId}", { params: { path: { conceptId: id } } }).then(unwrap);
   const [course, graph, mastery] = await Promise.all([
     getCourse(concept.courseId),
     getCourseGraph(concept.courseId),
-    api.GET("/courses/{courseId}/mastery", { params: { path: { courseId: concept.courseId } } }).then(unwrap),
+    getMastery(concept.courseId),
   ]);
+  return { concept, course, graph, mastery };
+}
+
+export function ConceptView() {
+  const id = useIdParam();
+  const state = useLoad(id && `concept:${id}`, () => loadConcept(id!));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{(d) => <ConceptPage {...d} />}</Loaded>;
+}
+
+function ConceptPage({ concept, course, graph, mastery }: Awaited<ReturnType<typeof loadConcept>>) {
   const levelOf = new Map(mastery.map((m) => [m.conceptId, m.level]));
   const nameOf = new Map(graph.concepts.map((c) => [c.id, c.name]));
   const toRef = (cid: string): ConceptRef => ({ id: cid, name: nameOf.get(cid) ?? "แนวคิด", level: levelOf.get(cid) });
@@ -29,7 +45,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ id: st
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <article className="min-w-0">
         <p className="text-sm text-slate-600">
-          <Link href={`/courses/${course.id}`} className="text-blue-800 hover:underline">
+          <Link href={routes.course(course.id)} className="text-blue-800 hover:underline">
             {course.name}
           </Link>
           <span aria-hidden="true"> / </span>
@@ -49,7 +65,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ id: st
           ) : (
             <p className="text-sm text-slate-600">ยังไม่มี{T.question}สำหรับ{T.concept}นี้ (แจ้งผู้ดูแลเนื้อหาแล้ว)</p>
           )}
-          <Link href={`/courses/${course.id}/map`} className={btn.secondary}>
+          <Link href={routes.courseMap(course.id)} className={btn.secondary}>
             ดูบน{T.masteryMap}
           </Link>
         </div>
@@ -84,7 +100,7 @@ function ConceptList({ title, items, empty }: { title: string; items: ConceptRef
         <ul className="flex flex-col gap-2">
           {items.map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
-              <Link href={`/concepts/${c.id}`} className="text-blue-800 hover:underline">
+              <Link href={routes.concept(c.id)} className="text-blue-800 hover:underline">
                 {c.name}
               </Link>
               <MasteryChip level={c.level ?? "unassessed"} />

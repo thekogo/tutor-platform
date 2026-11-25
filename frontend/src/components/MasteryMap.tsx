@@ -23,6 +23,7 @@ import {
 import { T } from "@/lib/terms";
 import { cn } from "@/lib/ui";
 import { LEVEL_CLASS, MasteryChip, MasteryLegend } from "./MasteryChip";
+import { routes } from "@/lib/routes";
 
 const LEVEL_FILL: Record<MasteryLevel, string> = {
   unassessed: "#f1f5f9",
@@ -129,7 +130,7 @@ export function MasteryMap({ course, mastery, preview = false, height = "calc(10
           nodesConnectable={false}
           elementsSelectable
           onNodeClick={(_, node) => {
-            if (node.type === "concept") router.push(`/concepts/${node.id}`);
+            if (node.type === "concept") router.push(routes.concept(node.id));
           }}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{ style: { stroke: "#94a3b8", strokeWidth: 1.25 } }}

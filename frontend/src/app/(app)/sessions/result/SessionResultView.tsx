@@ -1,23 +1,47 @@
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Markdown } from "@/components/Markdown";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { StartLearningPathButton } from "@/components/StartLearningPathButton";
-import { EmptyState, PageHeader } from "@/components/StateViews";
-import { serverApi, unwrap } from "@/lib/api/server";
+import { EmptyState, LoadingBlock, PageHeader } from "@/components/StateViews";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
+import { api, unwrap } from "@/lib/api/client";
+import { useLoad } from "@/lib/api/use-load";
+import type { SessionResult, StudySession } from "@/lib/api/types";
+import { routes } from "@/lib/routes";
 import { SESSION_KIND_LABEL, T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 import { btn, card, cn, percent } from "@/lib/ui";
 
-export const metadata = { title: "ผลลัพธ์" };
+type ResultData = { running: true } | { running: false; result: SessionResult; session: StudySession };
 
-export default async function SessionResultPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const api = await serverApi();
-  const res = await api.GET("/sessions/{sessionId}/result", { params: { path: { sessionId: id } } });
-  if (res.response.status === 409) redirect(`/sessions/${id}`);
+async function loadResult(id: string): Promise<ResultData> {
+  const res = await api().GET("/sessions/{sessionId}/result", { params: { path: { sessionId: id } } });
+  // 409: still in progress → back to the runner.
+  if (res.response.status === 409) return { running: true };
   const result = unwrap(res);
-  const session = await api.GET("/sessions/{sessionId}", { params: { path: { sessionId: id } } }).then(unwrap);
+  const session = await api().GET("/sessions/{sessionId}", { params: { path: { sessionId: id } } }).then(unwrap);
+  return { running: false, result, session };
+}
 
+export function SessionResultView() {
+  const id = useIdParam();
+  const state = useLoad(id && `result:${id}`, () => loadResult(id!));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{(d) => (d.running ? <BackToRunner id={id} /> : <SessionResultPage result={d.result} session={d.session} />)}</Loaded>;
+}
+
+function BackToRunner({ id }: { id: string }) {
+  const router = useRouter();
+  useEffect(() => router.replace(routes.session(id)), [router, id]);
+  return <LoadingBlock />;
+}
+
+function SessionResultPage({ result, session }: { result: SessionResult; session: StudySession }) {
   const total = result.total ?? result.answered;
   const score = total > 0 ? result.correct / total : 0;
   const topStudy = result.rootCauses.find((r) => r.kind === "study" && r.targetConceptId);
@@ -27,7 +51,7 @@ export default async function SessionResultPage({ params }: { params: Promise<{ 
       <PageHeader
         title={`ผลลัพธ์${SESSION_KIND_LABEL[result.kind]}`}
         actions={
-          <Link href={`/courses/${session.courseId}`} className={btn.secondary}>
+          <Link href={routes.course(session.courseId)} className={btn.secondary}>
             กลับไปที่{T.course}
           </Link>
         }

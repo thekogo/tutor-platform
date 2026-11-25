@@ -1,0 +1,93 @@
+# Static Next.js export (out/) + /api reverse proxy to the Go backend.
+# Rendered by the nginx image's entrypoint (envsubst) into /etc/nginx/conf.d/:
+#   ${PORT}                   listen port (Cloud Run sets it; default 3000)
+#   ${BACKEND_URL}            backend origin, e.g. http://backend:8080 (no path)
+#   ${NGINX_LOCAL_RESOLVERS}  DNS servers from /etc/resolv.conf (Docker, Cloud Run, …)
+
+# Hashed build assets are immutable; pages must revalidate so a deploy shows up at
+# once. Empty for /api so the backend's own Cache-Control is passed through untouched.
+map $uri $tp_cache_control {
+    ~^/api/          "";
+    ~^/_next/static/ "public, max-age=31536000, immutable";
+    default          "no-cache";
+}
+
+# Keep the original scheme when a load balancer (Cloud Run) terminates TLS in front of us.
+map $http_x_forwarded_proto $tp_forwarded_proto {
+    ""      $scheme;
+    default $http_x_forwarded_proto;
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+
+    server_tokens off;
+    # Relative Location headers: correct behind a proxy whatever port we listen on.
+    absolute_redirect off;
+    client_max_body_size 1m;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
+
+    add_header Cache-Control $tp_cache_control always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Re-resolve the backend's name at runtime instead of pinning the IP at startup.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=30s ipv6=off;
+    resolver_timeout 5s;
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Same-origin API, so the backend's session cookie stays first-party.
+    location /api/ {
+        set $tp_backend "${BACKEND_URL}";
+        # A variable without a URI part forwards the request URI unchanged.
+        proxy_pass $tp_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $tp_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_ssl_server_name on;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+    }
+
+    # Pages moved under /courses when the platform became multi-Course.
+    location = /learning-path   { return 302 /; }
+    location = /reports/formats { return 302 /; }
+
+    location = / {
+        try_files /index.html =404;
+    }
+
+    # /courses → courses.html, /courses/map → courses/map.html, assets as-is.
+    location / {
+        try_files $uri $uri.html @legacy;
+    }
+
+    # Old dynamic-segment URLs (/courses/<id>/map, /concepts/<id>, …) → ?id= pages.
+    location @legacy {
+        rewrite ^/courses/([^/]+)/(map|learning-path|reports/formats)/?$ /courses/$2?id=$1? redirect;
+        rewrite ^/courses/([^/]+)/?$ /courses?id=$1? redirect;
+        rewrite ^/concepts/([^/]+)/?$ /concepts?id=$1? redirect;
+        rewrite ^/sessions/([^/]+)/result/?$ /sessions/result?id=$1? redirect;
+        rewrite ^/sessions/([^/]+)/?$ /sessions?id=$1? redirect;
+        return 404;
+    }
+
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
+    }
+}

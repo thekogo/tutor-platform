@@ -16,11 +16,11 @@ export function AppNav({ isOwner, learnerName }: Props) {
     { href: "/", label: `${T.course}ทั้งหมด` },
     ...(isOwner ? [{ href: "/admin", label: "จัดการระบบ" }] : []),
   ];
-  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname.startsWith("/courses/") : pathname.startsWith(href));
+  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname === "/courses" || pathname.startsWith("/courses/") : pathname.startsWith(href));
 
   async function logout() {
     await api().POST("/auth/logout");
-    // Full reload so every Server Component drops the old session.
+    // Full reload so no page keeps data from the old session.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/login");
   }

@@ -5,6 +5,7 @@ import { btn, card, cn } from "@/lib/ui";
 import { MasteryChip } from "./MasteryChip";
 import { StartLearningPathButton } from "./StartLearningPathButton";
 import { StartSessionButton } from "./StartSessionButton";
+import { routes } from "@/lib/routes";
 
 type Props = {
   recommendation: Recommendation;
@@ -33,7 +34,7 @@ export function ReasonPath({ recommendation }: { recommendation: Recommendation 
       {steps.map((step, i) => (
         <li key={step.id} className="flex items-center gap-1">
           <Link
-            href={`/concepts/${step.id}`}
+            href={routes.concept(step.id)}
             className={cn(
               "flex flex-col gap-1 rounded-lg border bg-white px-3 py-2 text-sm hover:border-blue-400 hover:bg-blue-50",
               i === 0 ? "border-red-300 ring-1 ring-red-200" : "border-slate-200",
@@ -121,7 +122,7 @@ export function RecommendationCard({ recommendation: rec, courseId, top = false,
                 variant={top ? "primary" : "secondary"}
               />
             )}
-            <Link href={`/concepts/${rec.conceptId}`} className={btn.secondary}>
+            <Link href={routes.concept(rec.conceptId)} className={btn.secondary}>
               อ่าน{T.lesson}
             </Link>
             <StartSessionButton request={{ kind: "quiz", courseId, conceptId: rec.conceptId }} variant="ghost">

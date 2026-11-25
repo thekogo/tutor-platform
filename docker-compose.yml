@@ -1,4 +1,4 @@
-# Local stack: PostgreSQL + Go backend (REST /api, MCP /mcp) + Next.js frontend.
+# Local stack: PostgreSQL + Go backend (REST /api, MCP /mcp) + static frontend on nginx.
 #
 #   make up                 # or: docker compose up -d --build
 #   make e2e                # adds docker-compose.e2e.yml (dev login on)
@@ -72,8 +72,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # NEXT_PUBLIC_* are inlined at build time, so they are build args as well as env.
-        NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING:-false}
+        # NEXT_PUBLIC_* are inlined into the static build.
         NEXT_PUBLIC_DEV_LOGIN: ${NEXT_PUBLIC_DEV_LOGIN:-false}
     image: tutor-platform/frontend:local
     restart: unless-stopped
@@ -81,13 +80,12 @@ services:
       backend:
         condition: service_healthy
     environment:
+      # nginx proxies /api/* here.
       BACKEND_URL: http://backend:8080
-      NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING:-false}
-      NEXT_PUBLIC_DEV_LOGIN: ${NEXT_PUBLIC_DEV_LOGIN:-false}
     ports:
       - "${FRONTEND_HOST_PORT:-3000}:3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/healthz"]
       interval: 5s
       timeout: 5s
       retries: 30

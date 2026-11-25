@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { api, errorMessage } from "@/lib/api/client";
+import { api, errorMessage, invalidate } from "@/lib/api/client";
 import { T } from "@/lib/terms";
 import { btn, formatDateTime } from "@/lib/ui";
 
 export function CreateInvite() {
-  const router = useRouter();
   const inputId = useId();
   const [url, setUrl] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -27,7 +25,7 @@ export function CreateInvite() {
     }
     setUrl(data.url);
     setExpiresAt(data.expiresAt);
-    router.refresh();
+    invalidate();
   }
 
   async function copy() {

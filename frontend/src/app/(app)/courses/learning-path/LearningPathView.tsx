@@ -1,23 +1,37 @@
+"use client";
+
 import Link from "next/link";
 import { AbandonPathButton } from "@/components/AbandonPathButton";
 import { MasteryChip } from "@/components/MasteryChip";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, PageHeader } from "@/components/StateViews";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
+import { api, unwrapOptional } from "@/lib/api/client";
 import { getCourse } from "@/lib/api/queries";
-import { serverApi, unwrapOptional } from "@/lib/api/server";
+import { useLoad } from "@/lib/api/use-load";
+import type { CourseSummary, LearningPath } from "@/lib/api/types";
+import { routes } from "@/lib/routes";
 import { T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 import { btn, card, cn, formatDateTime } from "@/lib/ui";
 
-export const metadata = { title: T.learningPath };
-
-export default async function LearningPathPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+async function loadPath(id: string) {
   const course = await getCourse(id);
-  const api = await serverApi();
-  const path = await api
+  const path = await api()
     .GET("/courses/{courseId}/learning-path", { params: { path: { courseId: course.id } } })
     .then(unwrapOptional);
+  return { course, path };
+}
 
+export function LearningPathView() {
+  const id = useIdParam();
+  const state = useLoad(id && `learning-path:${id}`, () => loadPath(id!));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{(d) => <LearningPathPage {...d} />}</Loaded>;
+}
+
+function LearningPathPage({ course, path }: { course: CourseSummary; path: LearningPath | null }) {
   if (!path) {
     return (
       <div>
@@ -25,7 +39,7 @@ export default async function LearningPathPage({ params }: { params: Promise<{ i
         <EmptyState
           title={`ยังไม่มี${T.learningPath}ที่กำลังเรียน`}
           action={
-            <Link href={`/courses/${course.id}`} className={btn.primary}>
+            <Link href={routes.course(course.id)} className={btn.primary}>
               ดู{T.recommendation}ที่ภาพรวม{T.course}
             </Link>
           }
@@ -81,14 +95,14 @@ export default async function LearningPathPage({ params }: { params: Promise<{ i
                   {i === 0 ? T.rootCause : i === path.steps.length - 1 ? "เป้าหมาย" : `ขั้นที่ ${i + 1}`}
                   {current && <strong className="ml-2 text-blue-800">· ขั้นปัจจุบัน</strong>}
                 </p>
-                <Link href={`/concepts/${s.id}`} className="font-medium text-slate-900 hover:underline">
+                <Link href={routes.concept(s.id)} className="font-medium text-slate-900 hover:underline">
                   {s.name}
                 </Link>
               </div>
               {s.level && <MasteryChip level={s.level} />}
               {current && (
                 <div className="flex gap-2">
-                  <Link href={`/concepts/${s.id}`} className={btn.secondary}>
+                  <Link href={routes.concept(s.id)} className={btn.secondary}>
                     อ่าน{T.lesson}
                   </Link>
                   <StartSessionButton request={{ kind: "quiz", courseId: course.id, conceptId: s.id }}>

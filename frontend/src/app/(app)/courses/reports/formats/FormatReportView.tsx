@@ -1,19 +1,32 @@
+"use client";
+
 import { EmptyState, PageHeader } from "@/components/StateViews";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
+import { api, unwrap } from "@/lib/api/client";
 import { getCourse, getCourseGraph } from "@/lib/api/queries";
-import { serverApi, unwrap } from "@/lib/api/server";
+import { useLoad } from "@/lib/api/use-load";
 import { T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 import { card, cn, percent } from "@/lib/ui";
 
-export const metadata = { title: `รายงาน${T.questionFormat}` };
-
-export default async function FormatReportPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const api = await serverApi();
+async function loadReport(id: string) {
   const [course, graph, stats] = await Promise.all([
     getCourse(id),
     getCourseGraph(id),
-    api.GET("/courses/{courseId}/format-report", { params: { path: { courseId: id } } }).then(unwrap),
+    api().GET("/courses/{courseId}/format-report", { params: { path: { courseId: id } } }).then(unwrap),
   ]);
+  return { course, graph, stats };
+}
+
+export function FormatReportView() {
+  const id = useIdParam();
+  const state = useLoad(id && `format-report:${id}`, () => loadReport(id!));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{(d) => <FormatReport {...d} />}</Loaded>;
+}
+
+function FormatReport({ course, graph, stats }: Awaited<ReturnType<typeof loadReport>>) {
   const examples = graph.questionFormats.slice(0, 3).map((f) => f.name).join(", ");
   const answeredAny = stats.some((s) => s.answered > 0);
 

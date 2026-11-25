@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api, errorMessage } from "@/lib/api/client";
 import { T } from "@/lib/terms";
 import { btn } from "@/lib/ui";
+import { routes } from "@/lib/routes";
 
 type Props = {
   courseId: string;
@@ -28,8 +29,7 @@ export function StartLearningPathButton({ courseId, rootConceptId, targetConcept
       body: { rootConceptId, targetConceptId },
     });
     if (data) {
-      router.push(`/courses/${courseId}/learning-path`);
-      router.refresh();
+      router.push(routes.courseLearningPath(courseId));
       return;
     }
     setPending(false);

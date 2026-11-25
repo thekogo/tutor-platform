@@ -4,7 +4,7 @@ import { loadFixtures } from "../lib/fixtures";
 test("Mastery Map renders a node for every Concept", async ({ page }) => {
   const { courseId, conceptCount } = loadFixtures();
 
-  await page.goto(`/courses/${courseId}/map`);
+  await page.goto(`/courses/map?id=${courseId}`);
   const map = page.getByTestId("mastery-map");
   await expect(map).toBeVisible();
 

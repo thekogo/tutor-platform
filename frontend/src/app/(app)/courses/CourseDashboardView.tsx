@@ -1,30 +1,44 @@
+"use client";
+
 import Link from "next/link";
+import { NotFoundView } from "@/components/ErrorViews";
+import { Loaded } from "@/components/Loaded";
 import { MasteryChip } from "@/components/MasteryChip";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState, PageHeader } from "@/components/StateViews";
-import { getCourse, getMe } from "@/lib/api/queries";
-import { serverApi, unwrap, unwrapOptional } from "@/lib/api/server";
+import { api, unwrap, unwrapOptional } from "@/lib/api/client";
+import { getCourse, getCourseGraph, getMastery, getMe } from "@/lib/api/queries";
+import { useLoad } from "@/lib/api/use-load";
 import { MASTERY_LEVELS } from "@/lib/api/types";
 import { formatTimeLimit } from "@/lib/countdown";
 import { countByLevel } from "@/lib/graph-layout";
+import { routes } from "@/lib/routes";
 import { T } from "@/lib/terms";
+import { useIdParam } from "@/lib/use-id-param";
 import { btn, card, cn, percent } from "@/lib/ui";
 
-export const metadata = { title: "ภาพรวมคอร์ส" };
-
-export default async function CourseDashboardPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+async function loadDashboard(id: string) {
   const [me, course] = await Promise.all([getMe(), getCourse(id)]);
-  const api = await serverApi();
   const p = { params: { path: { courseId: course.id } } };
   const [recs, exams, mastery, graph, path] = await Promise.all([
-    api.GET("/courses/{courseId}/recommendations", p).then(unwrap),
-    api.GET("/courses/{courseId}/exams", p).then(unwrap),
-    api.GET("/courses/{courseId}/mastery", p).then(unwrap),
-    api.GET("/courses/{courseId}", p).then(unwrap),
-    api.GET("/courses/{courseId}/learning-path", p).then(unwrapOptional),
+    api().GET("/courses/{courseId}/recommendations", p).then(unwrap),
+    api().GET("/courses/{courseId}/exams", p).then(unwrap),
+    getMastery(course.id),
+    getCourseGraph(course.id),
+    api().GET("/courses/{courseId}/learning-path", p).then(unwrapOptional),
   ]);
+  return { me, course, recs, exams, mastery, graph, path };
+}
+
+export function CourseDashboardView() {
+  const id = useIdParam();
+  const state = useLoad(id && `dashboard:${id}`, () => loadDashboard(id!));
+  if (!id) return <NotFoundView />;
+  return <Loaded state={state}>{(d) => <CourseDashboard {...d} />}</Loaded>;
+}
+
+function CourseDashboard({ me, course, recs, exams, mastery, graph, path }: Awaited<ReturnType<typeof loadDashboard>>) {
   const [top, ...others] = recs;
   const counts = countByLevel(
     graph.concepts.map((c) => c.id),
@@ -56,7 +70,7 @@ export default async function CourseDashboardPage({ params }: { params: Promise<
             คุณกำลังเรียนตาม{T.learningPath} ขั้นปัจจุบัน:{" "}
             <strong>{path.steps.find((s) => s.id === path.currentStepConceptId)?.name}</strong>
           </p>
-          <Link href={`/courses/${course.id}/learning-path`} className={btn.secondary}>
+          <Link href={routes.courseLearningPath(course.id)} className={btn.secondary}>
             ไปที่{T.learningPath}
           </Link>
         </section>
@@ -106,7 +120,7 @@ export default async function CourseDashboardPage({ params }: { params: Promise<
               </li>
             ))}
           </ul>
-          <Link href={`/courses/${course.id}/map`} className={cn(btn.secondary, "mt-4")}>
+          <Link href={routes.courseMap(course.id)} className={cn(btn.secondary, "mt-4")}>
             เปิด{T.masteryMap}
           </Link>
         </section>
