@@ -158,28 +158,35 @@ func (s *Service) AskHelp(ctx context.Context, a Actor, in AskHelpInput) (string
 		}
 	}
 
+	return s.callTutor(ctx, a, helpSystemPrompt(question, choices, conceptNames), msgs, "question_id", question.ID)
+}
+
+// callTutor spends one unit of the Learner's Tutor Chat budget and asks the
+// model, with system as the system prompt followed by the conversation.
+// logAttrs identify what the chat is about in logs.
+func (s *Service) callTutor(ctx context.Context, a Actor, system string, msgs []llm.Message, logAttrs ...any) (string, error) {
 	if !s.help.allow(a.LearnerID, s.now()) {
 		return "", E(KindTooManyRequests, "help_rate_limited",
 			"you have used the Tutor Chat %d times in the last hour; please try again later", s.help.cfg.MaxPerHour)
 	}
 
-	prompt := []llm.Message{{Role: llm.RoleSystem, Content: helpSystemPrompt(question, choices, conceptNames)}}
+	prompt := []llm.Message{{Role: llm.RoleSystem, Content: system}}
 	prompt = append(prompt, msgs...)
 	cctx, cancel := context.WithTimeout(ctx, s.help.cfg.CallTimeout)
 	defer cancel()
 	start := time.Now()
 	reply, err := s.help.cfg.Model.Chat(cctx, prompt)
 	if err != nil {
-		s.log.WarnContext(ctx, "tutor chat failed", "question_id", question.ID, "error", err)
+		s.log.WarnContext(ctx, "tutor chat failed", append(logAttrs, "error", err)...)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(cctx.Err(), context.DeadlineExceeded) {
 			return "", E(KindUnavailable, "help_timeout", "the Tutor Chat took too long to answer; please try again")
 		}
 		return "", E(KindUnavailable, "help_failed", "the Tutor Chat is unavailable right now; please try again")
 	}
-	s.log.InfoContext(ctx, "tutor chat",
-		"learner_id", a.LearnerID, "question_id", question.ID, "model", reply.Model, "turns", len(msgs),
+	s.log.InfoContext(ctx, "tutor chat", append([]any{"learner_id", a.LearnerID}, append(logAttrs,
+		"model", reply.Model, "turns", len(msgs),
 		"prompt_tokens", reply.Usage.PromptTokens, "completion_tokens", reply.Usage.CompletionTokens,
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", time.Since(start).Milliseconds())...)...)
 	return reply.Content, nil
 }
 

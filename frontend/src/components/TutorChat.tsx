@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { api, errorMessage } from "@/lib/api/client";
-import type { HelpMessage } from "@/lib/api/types";
+import { errorMessage } from "@/lib/api/client";
+import type { HelpMessage, HelpReply } from "@/lib/api/types";
 import { T } from "@/lib/terms";
 import { btn, card, cn } from "@/lib/ui";
 import { Markdown } from "./Markdown";
@@ -11,18 +11,33 @@ import { Markdown } from "./Markdown";
 const MAX_TURNS = 20;
 const MAX_CHARS = 1000;
 
+/** Sends the conversation (oldest first, last turn the Learner's) to a Tutor Chat endpoint. */
+export type AskTutor = (messages: HelpMessage[]) => Promise<{ data?: HelpReply; error?: unknown }>;
+
 type Props = {
-  sessionId: string;
-  questionId: string;
+  ask: AskTutor;
+  /** Button label while collapsed. */
+  openLabel?: string;
+  /** One line under the heading explaining what the tutor will do. */
+  intro?: string;
+  placeholder?: string;
+  /** Collapsed state as a card with a full-width primary button, for sidebars. */
+  prominent?: boolean;
 };
 
 /**
- * Tutor Chat for one Quiz Question. Stateless on the server: the whole
- * conversation is sent each time. The server adds the Question, answer key and
- * Explanation as confidential context; this component never sees them.
- * Mount with `key={questionId}` so each Question starts a fresh conversation.
+ * Tutor Chat panel. Stateless on the server: the whole conversation is sent
+ * each time and the server adds its own context (a Question with its key, or a
+ * Concept's Lesson); this component never sees it. Mount with a `key` per
+ * subject so each one starts a fresh conversation.
  */
-export function TutorChat({ sessionId, questionId }: Props) {
+export function TutorChat({
+  ask,
+  openLabel = `ถาม${T.tutorChat}`,
+  intro = "ช่วยชี้แนะทีละขั้น แต่จะไม่บอกคำตอบ ลองเล่าว่าคิดถึงไหนแล้ว",
+  placeholder = "เช่น ไม่รู้จะเริ่มจากตรงไหน",
+  prominent = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<HelpMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -30,6 +45,8 @@ export function TutorChat({ sessionId, questionId }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  /** Bumped by "new chat" so a reply still in flight for the old conversation is dropped. */
+  const convo = useRef(0);
   const inputId = useId();
   const panelId = useId();
 
@@ -54,10 +71,9 @@ export function TutorChat({ sessionId, questionId }: Props) {
     setDraft("");
     setErr(null);
     setPending(true);
-    const { data, error } = await api().POST("/sessions/{sessionId}/questions/{questionId}/help", {
-      params: { path: { sessionId, questionId } },
-      body: { messages: next.slice(-MAX_TURNS) },
-    });
+    const mine = convo.current;
+    const { data, error } = await ask(next.slice(-MAX_TURNS));
+    if (mine !== convo.current) return;
     setPending(false);
     if (data) {
       setMessages([...next, { role: "assistant", content: data.reply }]);
@@ -70,6 +86,15 @@ export function TutorChat({ sessionId, questionId }: Props) {
     inputRef.current?.focus();
   }
 
+  function newChat() {
+    convo.current++;
+    setMessages([]);
+    setDraft("");
+    setErr(null);
+    setPending(false);
+    inputRef.current?.focus();
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -78,19 +103,26 @@ export function TutorChat({ sessionId, questionId }: Props) {
   }
 
   if (!open) {
-    return (
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className={btn.ghost}
-          onClick={() => setOpen(true)}
-          aria-expanded={false}
-          aria-controls={panelId}
-          data-testid="tutor-chat-open"
-        >
-          💬 ถาม{T.tutorChat}
-        </button>
-      </div>
+    const button = (
+      <button
+        type="button"
+        className={prominent ? cn(btn.primary, "w-full") : btn.ghost}
+        onClick={() => setOpen(true)}
+        aria-expanded={false}
+        aria-controls={panelId}
+        data-testid="tutor-chat-open"
+      >
+        💬 {openLabel}
+      </button>
+    );
+    return prominent ? (
+      <section className="flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm" aria-label={T.tutorChat}>
+        <h2 className="font-semibold text-slate-900">{T.tutorChat}</h2>
+        <p className="text-sm text-slate-700">{intro}</p>
+        {button}
+      </section>
+    ) : (
+      <div className="flex justify-end">{button}</div>
     );
   }
 
@@ -99,11 +131,18 @@ export function TutorChat({ sessionId, questionId }: Props) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-slate-900">💬 {T.tutorChat}</h3>
-          <p className="text-sm text-slate-600">ช่วยชี้แนะทีละขั้น แต่จะไม่บอกคำตอบ ลองเล่าว่าคิดถึงไหนแล้ว</p>
+          <p className="text-sm text-slate-600">{intro}</p>
         </div>
-        <button type="button" className={btn.ghost} onClick={() => setOpen(false)} aria-expanded={true} aria-controls={panelId}>
-          ซ่อน
-        </button>
+        <div className="flex shrink-0 gap-1">
+          {(messages.length > 0 || pending) && (
+            <button type="button" className={btn.ghost} onClick={newChat} data-testid="tutor-chat-new">
+              แชทใหม่
+            </button>
+          )}
+          <button type="button" className={btn.ghost} onClick={() => setOpen(false)} aria-expanded={true} aria-controls={panelId}>
+            ซ่อน
+          </button>
+        </div>
       </div>
 
       {(messages.length > 0 || pending) && (
@@ -146,7 +185,7 @@ export function TutorChat({ sessionId, questionId }: Props) {
           onKeyDown={onKeyDown}
           rows={2}
           maxLength={MAX_CHARS}
-          placeholder="เช่น ไม่รู้จะเริ่มจากตรงไหน"
+          placeholder={placeholder}
           className="flex-1 resize-y rounded-lg border border-slate-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           data-testid="tutor-chat-input"
         />

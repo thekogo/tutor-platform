@@ -46,7 +46,7 @@ The worked solution to a Question, shown to the Learner after they answer.
 _Avoid_: Solution, answer key
 
 **Tutor Chat**:
-An AI conversation a Learner can open on a Question in a Quiz to get hints. The AI sees the answer key and Explanation as private context but is instructed to guide, never to reveal them. Not offered in Exams, Diagnostic Quizzes or Placement Tests, which measure Mastery.
+An AI conversation a Learner can open to get help. On a Question in a Quiz it gives hints: the AI sees the answer key and Explanation as private context but is instructed to guide, never to reveal them; not offered in Exams, Diagnostic Quizzes or Placement Tests, which measure Mastery. On a Concept page it explains the Concept: the AI gets the Lesson, Prerequisites and the Learner's Mastery as context and answers follow-up questions about them.
 _Avoid_: Chatbot, AI help, hint bot
 
 **Question Format**:

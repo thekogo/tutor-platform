@@ -158,6 +158,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/concepts/{conceptId}/help": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conceptId: components["parameters"]["ConceptId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutor Chat on a Concept page — ask the AI tutor about the Concept and its Lesson.
+         * @description Stateless: send the whole conversation so far (oldest first); the last message must be the
+         *     Learner's. The server adds the Concept's Lesson, Topic, Prerequisites, dependents and the
+         *     Learner's Mastery as context for the model. Only available when the Concept has
+         *     `helpAvailable: true`. Shares the per-Learner Tutor Chat rate limit with Quizzes.
+         */
+        post: operations["askConceptHelp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses/{courseId}/mastery": {
         parameters: {
             query?: never;
@@ -540,6 +565,8 @@ export interface components {
             dependentIds: string[];
             mastery: components["schemas"]["Mastery"];
             activeQuestionCount?: number;
+            /** @description Whether the Tutor Chat can be opened on this Concept (when configured) */
+            helpAvailable?: boolean;
         };
         /** @enum {string} */
         MasteryLevel: "unassessed" | "weak" | "developing" | "mastered";
@@ -964,6 +991,36 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    askConceptHelp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conceptId: components["parameters"]["ConceptId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HelpRequest"];
+            };
+        };
+        responses: {
+            /** @description The tutor's reply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HelpReply"];
+                };
+            };
+            404: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     getMastery: {

@@ -5,6 +5,7 @@ import { Markdown } from "@/components/Markdown";
 import { MasteryChip } from "@/components/MasteryChip";
 import { StartSessionButton } from "@/components/StartSessionButton";
 import { EmptyState } from "@/components/StateViews";
+import { TutorChat } from "@/components/TutorChat";
 import { NotFoundView } from "@/components/ErrorViews";
 import { Loaded } from "@/components/Loaded";
 import { api, unwrap } from "@/lib/api/client";
@@ -85,6 +86,18 @@ function ConceptPage({ concept, course, graph, mastery }: Awaited<ReturnType<typ
       <aside className="flex flex-col gap-4">
         <ConceptList title={T.prerequisite} empty="ไม่มี — เรื่องนี้เป็นเรื่องพื้นฐาน" items={prereqs} />
         <ConceptList title={T.dependents} empty="ยังไม่มีเรื่องที่ต่อยอด" items={dependents} />
+        {concept.helpAvailable && (
+          <TutorChat
+            key={concept.id}
+            prominent
+            openLabel={`ถาม${T.tutorChat}เรื่องนี้`}
+            intro={`ถามเพิ่มเติมเกี่ยวกับ${T.lesson}นี้ได้เลย เช่น ขอคำอธิบายอีกแบบ ขอตัวอย่าง หรือโจทย์ฝึก`}
+            placeholder="เช่น ช่วยอธิบายอีกแบบ หรือขอตัวอย่างเพิ่ม"
+            ask={(messages) =>
+              api().POST("/concepts/{conceptId}/help", { params: { path: { conceptId: concept.id } }, body: { messages } })
+            }
+          />
+        )}
       </aside>
     </div>
   );

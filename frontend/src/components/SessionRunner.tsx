@@ -316,7 +316,15 @@ export function SessionRunner({ session, title }: Props) {
       )}
 
       {question?.helpAvailable && (phase === "answering" || phase === "submitting" || phase === "feedback") && (
-        <TutorChat key={question.id} sessionId={session.id} questionId={question.id} />
+        <TutorChat
+          key={question.id}
+          ask={(messages) =>
+            api().POST("/sessions/{sessionId}/questions/{questionId}/help", {
+              params: { path: { sessionId: session.id, questionId: question.id } },
+              body: { messages },
+            })
+          }
+        />
       )}
 
       {flagOpen && question && (
