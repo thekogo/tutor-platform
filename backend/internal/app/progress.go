@@ -77,6 +77,7 @@ type ConceptDetail struct {
 	DependentIDs        []uuid.UUID
 	Mastery             MasteryView
 	ActiveQuestionCount int
+	HelpAvailable       bool // the Concept Tutor Chat can be opened
 }
 
 // findConcept locates the Course of a Concept.
@@ -120,6 +121,7 @@ func (s *Service) ConceptDetail(ctx context.Context, a Actor, conceptID uuid.UUI
 		return ConceptDetail{}, err
 	}
 	d.ActiveQuestionCount = int(n)
+	d.HelpAvailable = s.ConceptHelpAvailable()
 	return d, nil
 }
 

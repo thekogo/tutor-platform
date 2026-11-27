@@ -64,6 +64,7 @@ scripts/                    dev utilities (graph_check.py)
 **Auth:** Google OIDC, invite-only. First login with no Learners → that person becomes Owner. Others need a valid invite token. Sessions are opaque random tokens stored hashed in Postgres, sent as `HttpOnly; Secure; SameSite=Lax` cookie. State-changing requests require a matching `Origin`. `AUTH_DEV_LOGIN=true` enables `POST /api/auth/dev-login` for local dev and e2e only.
 
 **Tutor Chat** (ADR 0004): `POST /api/sessions/{id}/questions/{qid}/help` with the conversation so far. `app.AskHelp` checks the session is the Learner's own, open, a **Quiz**, and contains the Question; builds a system prompt with the stem, choices, answer key and Explanation marked confidential plus tutoring rules (hint one step at a time, never reveal the key or final answer); and calls the configured OpenAI-compatible gateway (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`). Stateless: nothing is stored. In-memory per-Learner limit (`AI_HELP_PER_HOUR`). `ServedQuestion.helpAvailable` tells the UI when to offer it.
+On a Concept page, `POST /api/concepts/{id}/help` (`app.AskConceptHelp`) does the same with the Concept's Lesson, Topic, Prerequisites, dependents and the Learner's Mastery as context, and rules to explain and stay on the Concept; `ConceptDetail.helpAvailable` gates it. Both share the Learner's hourly budget.
 
 **MCP auth:** `Authorization: Bearer <MCP_TOKEN>` (env), acts as Content Admin with Owner visibility.
 

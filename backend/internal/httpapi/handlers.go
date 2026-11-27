@@ -203,8 +203,28 @@ func (s *Server) GetConcept(ctx context.Context, req GetConceptRequestObject) (G
 	return GetConcept200JSONResponse{
 		Id: d.ID, CourseId: d.CourseID, Slug: d.Slug, Name: d.Name, TopicId: d.TopicID, PrerequisiteIds: d.PrerequisiteIDs, HasLesson: &d.HasLesson,
 		TopicName: &d.TopicName, LessonMd: d.LessonMd, DependentIds: d.DependentIDs, Mastery: masteryJSON(d.Mastery),
-		ActiveQuestionCount: &d.ActiveQuestionCount,
+		ActiveQuestionCount: &d.ActiveQuestionCount, HelpAvailable: &d.HelpAvailable,
 	}, nil
+}
+
+// AskConceptHelp answers a Tutor Chat message about a Concept and its Lesson.
+func (s *Server) AskConceptHelp(ctx context.Context, req AskConceptHelpRequestObject) (AskConceptHelpResponseObject, error) {
+	a, err := actorFrom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, app.E(app.KindBadRequest, "bad_request", "body required")
+	}
+	msgs := make([]app.HelpMessage, 0, len(req.Body.Messages))
+	for _, m := range req.Body.Messages {
+		msgs = append(msgs, app.HelpMessage{Role: string(m.Role), Content: m.Content})
+	}
+	reply, err := s.app.AskConceptHelp(ctx, a, app.AskConceptHelpInput{ConceptID: req.ConceptId, Messages: msgs})
+	if err != nil {
+		return nil, err
+	}
+	return AskConceptHelp200JSONResponse{Reply: reply}, nil
 }
 
 // ── progress ────────────────────────────────────────────────────────────

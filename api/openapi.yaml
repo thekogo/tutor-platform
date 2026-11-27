@@ -119,6 +119,28 @@ paths:
           description: Concept detail
           content: { application/json: { schema: { $ref: "#/components/schemas/ConceptDetail" } } }
         "404": { $ref: "#/components/responses/Error" }
+  /concepts/{conceptId}/help:
+    parameters: [{ $ref: "#/components/parameters/ConceptId" }]
+    post:
+      tags: [courses]
+      operationId: askConceptHelp
+      summary: Tutor Chat on a Concept page — ask the AI tutor about the Concept and its Lesson.
+      description: |
+        Stateless: send the whole conversation so far (oldest first); the last message must be the
+        Learner's. The server adds the Concept's Lesson, Topic, Prerequisites, dependents and the
+        Learner's Mastery as context for the model. Only available when the Concept has
+        `helpAvailable: true`. Shares the per-Learner Tutor Chat rate limit with Quizzes.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HelpRequest" } } }
+      responses:
+        "200":
+          description: The tutor's reply
+          content: { application/json: { schema: { $ref: "#/components/schemas/HelpReply" } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
 
   /courses/{courseId}/mastery:
     parameters: [{ $ref: "#/components/parameters/CourseId" }]
@@ -491,6 +513,7 @@ components:
             dependentIds: { type: array, items: { type: string, format: uuid } }
             mastery: { $ref: "#/components/schemas/Mastery" }
             activeQuestionCount: { type: integer }
+            helpAvailable: { type: boolean, description: Whether the Tutor Chat can be opened on this Concept (when configured) }
 
     MasteryLevel:
       type: string

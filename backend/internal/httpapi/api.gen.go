@@ -135,14 +135,17 @@ type ConceptDetail struct {
 	CourseId            openapi_types.UUID   `json:"courseId"`
 	DependentIds        []openapi_types.UUID `json:"dependentIds"`
 	HasLesson           *bool                `json:"hasLesson,omitempty"`
-	Id                  openapi_types.UUID   `json:"id"`
-	LessonMd            *string              `json:"lessonMd,omitempty"`
-	Mastery             Mastery              `json:"mastery"`
-	Name                string               `json:"name"`
-	PrerequisiteIds     []openapi_types.UUID `json:"prerequisiteIds"`
-	Slug                string               `json:"slug"`
-	TopicId             openapi_types.UUID   `json:"topicId"`
-	TopicName           *string              `json:"topicName,omitempty"`
+
+	// HelpAvailable Whether the Tutor Chat can be opened on this Concept (when configured)
+	HelpAvailable   *bool                `json:"helpAvailable,omitempty"`
+	Id              openapi_types.UUID   `json:"id"`
+	LessonMd        *string              `json:"lessonMd,omitempty"`
+	Mastery         Mastery              `json:"mastery"`
+	Name            string               `json:"name"`
+	PrerequisiteIds []openapi_types.UUID `json:"prerequisiteIds"`
+	Slug            string               `json:"slug"`
+	TopicId         openapi_types.UUID   `json:"topicId"`
+	TopicName       *string              `json:"topicName,omitempty"`
 }
 
 // ConceptRef defines model for ConceptRef.
@@ -453,6 +456,9 @@ type SubmitAnswerJSONBody struct {
 // DevLoginJSONRequestBody defines body for DevLogin for application/json ContentType.
 type DevLoginJSONRequestBody DevLoginJSONBody
 
+// AskConceptHelpJSONRequestBody defines body for AskConceptHelp for application/json ContentType.
+type AskConceptHelpJSONRequestBody = HelpRequest
+
 // StartLearningPathJSONRequestBody defines body for StartLearningPath for application/json ContentType.
 type StartLearningPathJSONRequestBody StartLearningPathJSONBody
 
@@ -503,6 +509,9 @@ type ServerInterface interface {
 	// Concept with its Lesson, Prerequisites, dependents and the Learner's Mastery.
 	// (GET /concepts/{conceptId})
 	GetConcept(w http.ResponseWriter, r *http.Request, conceptId ConceptId)
+	// Tutor Chat on a Concept page — ask the AI tutor about the Concept and its Lesson.
+	// (POST /concepts/{conceptId}/help)
+	AskConceptHelp(w http.ResponseWriter, r *http.Request, conceptId ConceptId)
 
 	// (GET /courses)
 	ListCourses(w http.ResponseWriter, r *http.Request)
@@ -844,6 +853,37 @@ func (siw *ServerInterfaceWrapper) GetConcept(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetConcept(w, r, conceptId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AskConceptHelp operation middleware
+func (siw *ServerInterfaceWrapper) AskConceptHelp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "conceptId" -------------
+	var conceptId ConceptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "conceptId", r.PathValue("conceptId"), &conceptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "conceptId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AskConceptHelp(w, r, conceptId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1518,6 +1558,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/auth/google/login", wrapper.GoogleLogin)
 	m.HandleFunc("POST "+options.BaseURL+"/auth/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/concepts/{conceptId}", wrapper.GetConcept)
+	m.HandleFunc("POST "+options.BaseURL+"/concepts/{conceptId}/help", wrapper.AskConceptHelp)
 	m.HandleFunc("GET "+options.BaseURL+"/courses", wrapper.ListCourses)
 	m.HandleFunc("GET "+options.BaseURL+"/courses/{courseId}", wrapper.GetCourse)
 	m.HandleFunc("GET "+options.BaseURL+"/courses/{courseId}/exams", wrapper.ListExams)
@@ -1802,6 +1843,60 @@ type GetConcept404JSONResponse struct{ ErrorJSONResponse }
 func (response GetConcept404JSONResponse) VisitGetConceptResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskConceptHelpRequestObject struct {
+	ConceptId ConceptId `json:"conceptId"`
+	Body      *AskConceptHelpJSONRequestBody
+}
+
+type AskConceptHelpResponseObject interface {
+	VisitAskConceptHelpResponse(w http.ResponseWriter) error
+}
+
+type AskConceptHelp200JSONResponse HelpReply
+
+func (response AskConceptHelp200JSONResponse) VisitAskConceptHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskConceptHelp404JSONResponse struct{ ErrorJSONResponse }
+
+func (response AskConceptHelp404JSONResponse) VisitAskConceptHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskConceptHelp422JSONResponse Error
+
+func (response AskConceptHelp422JSONResponse) VisitAskConceptHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskConceptHelp429JSONResponse Error
+
+func (response AskConceptHelp429JSONResponse) VisitAskConceptHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AskConceptHelp503JSONResponse Error
+
+func (response AskConceptHelp503JSONResponse) VisitAskConceptHelpResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2327,6 +2422,9 @@ type StrictServerInterface interface {
 	// Concept with its Lesson, Prerequisites, dependents and the Learner's Mastery.
 	// (GET /concepts/{conceptId})
 	GetConcept(ctx context.Context, request GetConceptRequestObject) (GetConceptResponseObject, error)
+	// Tutor Chat on a Concept page — ask the AI tutor about the Concept and its Lesson.
+	// (POST /concepts/{conceptId}/help)
+	AskConceptHelp(ctx context.Context, request AskConceptHelpRequestObject) (AskConceptHelpResponseObject, error)
 
 	// (GET /courses)
 	ListCourses(ctx context.Context, request ListCoursesRequestObject) (ListCoursesResponseObject, error)
@@ -2686,6 +2784,39 @@ func (sh *strictHandler) GetConcept(w http.ResponseWriter, r *http.Request, conc
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetConceptResponseObject); ok {
 		if err := validResponse.VisitGetConceptResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AskConceptHelp operation middleware
+func (sh *strictHandler) AskConceptHelp(w http.ResponseWriter, r *http.Request, conceptId ConceptId) {
+	var request AskConceptHelpRequestObject
+
+	request.ConceptId = conceptId
+
+	var body AskConceptHelpJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AskConceptHelp(ctx, request.(AskConceptHelpRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AskConceptHelp")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AskConceptHelpResponseObject); ok {
+		if err := validResponse.VisitAskConceptHelpResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

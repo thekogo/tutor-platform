@@ -308,8 +308,20 @@ export const handlers = [
       dependentIds: courseGraph.concepts.filter((d) => d.prerequisiteIds.includes(c.id)).map((d) => d.id),
       mastery: toMastery(c.id),
       activeQuestionCount: mockQuestions.filter((q) => servable(q) && q.concepts.includes(c.slug)).length,
+      helpAvailable: true,
     };
     return json(detail);
+  }),
+  http.post(api("/concepts/:conceptId/help"), async ({ cookies, params, request }) => {
+    if (!currentLearner(cookies)) return unauthorized();
+    const c = conceptById.get(String(params.conceptId));
+    if (!c) return notFound("ไม่พบแนวคิด");
+    const body = (await request.json()) as { messages?: { role: string; content: string }[] };
+    const turns = body.messages ?? [];
+    if (turns.length === 0 || turns.at(-1)?.role !== "user") return error(422, "invalid_messages", "ข้อความไม่ถูกต้อง");
+    return json<HelpReply>({
+      reply: `เรื่อง **${c.name}** — ลองดูตัวอย่างนี้: ถ้า $x = 2$ แล้ว $2x = 4$ อยากให้อธิบายส่วนไหนเพิ่มอีกไหม?`,
+    });
   }),
 
   // progress
