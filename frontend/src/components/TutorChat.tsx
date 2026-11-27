@@ -39,6 +39,8 @@ export function TutorChat({
   prominent = false,
 }: Props) {
   const [open, setOpen] = useState(false);
+  /** Shown as a large centered dialog instead of inline; same conversation either way. */
+  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<HelpMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
@@ -49,14 +51,29 @@ export function TutorChat({
   const convo = useRef(0);
   const inputId = useId();
   const panelId = useId();
+  const titleId = useId();
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
-  }, [open]);
+  }, [open, expanded]);
   useEffect(() => {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, pending]);
+  }, [messages, pending, expanded]);
+  // While expanded: Escape shrinks back, and the page behind does not scroll.
+  useEffect(() => {
+    if (!expanded) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setExpanded(false);
+    }
+    document.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [expanded]);
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
@@ -126,33 +143,70 @@ export function TutorChat({
     );
   }
 
-  return (
-    <section id={panelId} className={cn(card, "flex flex-col gap-3")} aria-label={T.tutorChat} data-testid="tutor-chat">
-      <div className="flex items-start justify-between gap-2">
+  const panel = (
+    <section
+      id={panelId}
+      className={cn(
+        "flex flex-col gap-3",
+        expanded ? "h-[85vh] w-full max-w-3xl rounded-xl bg-white p-6 shadow-xl" : card,
+      )}
+      aria-labelledby={titleId}
+      data-testid="tutor-chat"
+      {...(expanded ? { role: "dialog", "aria-modal": true } : {})}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Inline (often a narrow sidebar): buttons get their own row under the title. */}
+      <div className={expanded ? "flex items-start justify-between gap-2" : "flex flex-col gap-2"}>
         <div>
-          <h3 className="font-semibold text-slate-900">💬 {T.tutorChat}</h3>
+          <h3 id={titleId} className={cn("font-semibold text-slate-900", expanded && "text-lg")}>
+            💬 {T.tutorChat}
+          </h3>
           <p className="text-sm text-slate-600">{intro}</p>
         </div>
-        <div className="flex shrink-0 gap-1">
+        <div className={cn("flex shrink-0 gap-1", !expanded && "flex-wrap justify-end border-t border-slate-100 pt-2")}>
           {(messages.length > 0 || pending) && (
             <button type="button" className={btn.ghost} onClick={newChat} data-testid="tutor-chat-new">
               แชทใหม่
             </button>
           )}
-          <button type="button" className={btn.ghost} onClick={() => setOpen(false)} aria-expanded={true} aria-controls={panelId}>
+          <button
+            type="button"
+            className={btn.ghost}
+            onClick={() => setExpanded(!expanded)}
+            data-testid="tutor-chat-expand"
+            title={expanded ? "ย่อกลับเป็นกล่องเดิม" : "เปิดเป็นหน้าต่างใหญ่กลางจอ"}
+          >
+            {expanded ? "↙ ย่อ" : "⤢ ขยาย"}
+          </button>
+          <button
+            type="button"
+            className={btn.ghost}
+            onClick={() => {
+              setExpanded(false);
+              setOpen(false);
+            }}
+            aria-expanded={true}
+            aria-controls={panelId}
+          >
             ซ่อน
           </button>
         </div>
       </div>
 
       {(messages.length > 0 || pending) && (
-        <div ref={logRef} role="log" aria-live="polite" className="flex max-h-96 flex-col gap-2 overflow-y-auto">
+        <div
+          ref={logRef}
+          role="log"
+          aria-live="polite"
+          className={cn("flex flex-col gap-2 overflow-y-auto", expanded ? "min-h-0 flex-1" : "max-h-96")}
+        >
           {messages.map((m, i) => (
             <div
               key={i}
               data-testid={m.role === "user" ? "tutor-chat-user" : "tutor-chat-reply"}
               className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                "max-w-[85%] rounded-lg px-3 py-2",
+                expanded ? "text-base" : "text-sm",
                 m.role === "user" ? "self-end bg-blue-700 text-white" : "self-start bg-slate-100 text-slate-900",
               )}
             >
@@ -166,6 +220,8 @@ export function TutorChat({
           )}
         </div>
       )}
+
+      {expanded && messages.length === 0 && !pending && <div className="flex-1" />}
 
       {err && (
         <p role="alert" className="text-sm text-red-700">
@@ -183,7 +239,7 @@ export function TutorChat({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          rows={2}
+          rows={expanded ? 3 : 2}
           maxLength={MAX_CHARS}
           placeholder={placeholder}
           className="flex-1 resize-y rounded-lg border border-slate-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -194,5 +250,16 @@ export function TutorChat({
         </button>
       </form>
     </section>
+  );
+
+  if (!expanded) return panel;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={() => setExpanded(false)}
+      data-testid="tutor-chat-backdrop"
+    >
+      {panel}
+    </div>
   );
 }

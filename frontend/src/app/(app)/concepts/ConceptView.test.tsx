@@ -40,6 +40,35 @@ describe("ConceptView — Tutor Chat", () => {
     expect(sent).toEqual({ messages: [{ role: "user", content: "อีกเรื่อง" }] });
   });
 
+  it("expands to a large dialog and back without losing the conversation", async () => {
+    id.current = conceptId("percent-of");
+    const user = userEvent.setup();
+    server.use(http.post("*/api/concepts/:id/help", () => HttpResponse.json({ reply: "คำอธิบาย" })));
+    render(<ConceptView />);
+    await user.click(await screen.findByTestId("tutor-chat-open"));
+    await user.type(screen.getByTestId("tutor-chat-input"), "ถาม{Enter}");
+    await screen.findByTestId("tutor-chat-reply");
+
+    await user.click(screen.getByTestId("tutor-chat-expand"));
+    const dialog = screen.getByRole("dialog", { name: /ติวเตอร์ AI/ });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(screen.getByTestId("tutor-chat-reply")).toHaveTextContent("คำอธิบาย");
+    expect(screen.getByTestId("tutor-chat-input")).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("tutor-chat-reply")).toHaveTextContent("คำอธิบาย");
+    expect(document.body.style.overflow).toBe("");
+
+    // Clicking the backdrop shrinks too; clicking inside the dialog does not.
+    await user.click(screen.getByTestId("tutor-chat-expand"));
+    await user.click(screen.getByTestId("tutor-chat-reply"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByTestId("tutor-chat-backdrop"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("drops a reply that arrives after starting a new chat", async () => {
     id.current = conceptId("percent-of");
     const user = userEvent.setup();
