@@ -31,6 +31,9 @@ func (s *Service) FlagQuestion(ctx context.Context, a Actor, questionID uuid.UUI
 	if err != nil {
 		return mapNotFound(err, "question")
 	}
+	if err := s.requireCourseAccess(ctx, a, question.CourseID); err != nil {
+		return notFound("question")
+	}
 	answered, err := s.q.HasAnswered(ctx, store.HasAnsweredParams{LearnerID: a.LearnerID, QuestionID: questionID})
 	if err != nil {
 		return err
@@ -131,14 +134,6 @@ func (s *Service) ListContentRequests(ctx context.Context, a Actor) ([]ContentRe
 		return nil, err
 	}
 	return s.listContentRequests(ctx, true)
-}
-
-// ListLearners lists every Learner (Owner only).
-func (s *Service) ListLearners(ctx context.Context, a Actor) ([]store.Learner, error) {
-	if err := requireOwner(a); err != nil {
-		return nil, err
-	}
-	return s.q.ListLearners(ctx)
 }
 
 // RetireQuestionAsOwner retires a Question from the admin UI.

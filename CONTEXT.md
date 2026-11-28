@@ -119,10 +119,14 @@ _Avoid_: Skill tree, progress map
 A person studying a Course, joined by invitation. Each Learner's Answers and Mastery are private to them and the Owner.
 _Avoid_: Student, user
 
+**Course Access**:
+The Owner's grant letting a Learner study one Course. A Learner sees only the Courses they have access to; the Owner has access to every Course. Granted per Learner or chosen on the invite.
+_Avoid_: Enrollment, permission, subscription
+
 **Content Admin**:
 The role that authors Courses, Concepts, Prerequisites, Lessons and Questions. Held by an AI agent, which generates content or imports it from outside sources — never by the Learner, so the Learner never sees Questions before answering them.
 _Avoid_: Author, teacher, tutor
 
 **Owner**:
-The person who runs the platform: invites Learners, operates the Content Admin agent, and resolves Flags and Content Requests. Also a Learner.
+The person who runs the platform: invites Learners, grants Course Access, operates the Content Admin agent, and resolves Flags and Content Requests. Also a Learner.
 _Avoid_: Admin, superuser

@@ -179,19 +179,23 @@ func TestDevLoginDisabled(t *testing.T) {
 	wantStatus(t, h.client().do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}), http.StatusNotFound, "not_found")
 }
 
+// googleLogin runs the Google login flow against the fake IdP.
+func googleLogin(t *testing.T, c *client, email, invite string) resp {
+	t.Helper()
+	path := "/api/auth/google/login"
+	if invite != "" {
+		path += "?invite=" + url.QueryEscape(invite)
+	}
+	r := c.do(http.MethodGet, path, nil)
+	wantStatus(t, r, http.StatusFound, "")
+	loc, _ := url.Parse(r.header.Get("Location"))
+	state := loc.Query().Get("state")
+	return c.do(http.MethodGet, "/api/auth/google/callback?code="+url.QueryEscape(email)+"&state="+url.QueryEscape(state), nil)
+}
+
 func TestGoogleLoginInviteOnly(t *testing.T) {
 	h := newHarness(t, false)
-	login := func(c *client, email, invite string) resp {
-		path := "/api/auth/google/login"
-		if invite != "" {
-			path += "?invite=" + url.QueryEscape(invite)
-		}
-		r := c.do(http.MethodGet, path, nil)
-		wantStatus(t, r, http.StatusFound, "")
-		loc, _ := url.Parse(r.header.Get("Location"))
-		state := loc.Query().Get("state")
-		return c.do(http.MethodGet, "/api/auth/google/callback?code="+url.QueryEscape(email)+"&state="+url.QueryEscape(state), nil)
-	}
+	login := func(c *client, email, invite string) resp { return googleLogin(t, c, email, invite) }
 	owner := h.client()
 	r := login(owner, "boss@example.com", "")
 	wantStatus(t, r, http.StatusFound, "")
@@ -258,8 +262,9 @@ func TestOwnerOnlyEndpoints(t *testing.T) {
 		{http.MethodGet, "/api/admin/flags"},
 		{http.MethodGet, "/api/admin/content-requests"},
 		{http.MethodPost, "/api/admin/questions/" + qid.String() + "/retire"},
+		{http.MethodPut, "/api/admin/learners/" + qid.String() + "/courses"},
 	} {
-		wantStatus(t, learner.do(ep.method, ep.path, nil), http.StatusForbidden, "forbidden")
+		wantStatus(t, learner.do(ep.method, ep.path, map[string]any{"courseIds": []string{}}), http.StatusForbidden, "forbidden")
 	}
 	r := owner.do(http.MethodGet, "/api/admin/learners", nil)
 	wantStatus(t, r, http.StatusOK, "")
@@ -507,4 +512,109 @@ func TestAllowedOriginsList(t *testing.T) {
 	c := newHarness(t, true, origin, "https://tunnel.example").client()
 	wantStatus(t, c.do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}, "Origin", "https://tunnel.example/"), http.StatusNoContent, "")
 	wantStatus(t, c.do(http.MethodPost, "/api/auth/dev-login", map[string]string{"email": "x@example.com"}, "Origin", "https://evil.example"), http.StatusForbidden, "bad_origin")
+}
+
+func TestCourseAccess(t *testing.T) {
+	h := newHarness(t, false)
+	courseID := h.env.CourseID.String()
+	owner := h.client()
+	wantStatus(t, googleLogin(t, owner, "boss@example.com", ""), http.StatusFound, "")
+	h.env.ActiveQuestions(t, 3, 1, "a")
+
+	invite := func(courseIDs ...string) string {
+		t.Helper()
+		var body any
+		if courseIDs != nil {
+			body = map[string]any{"courseIds": courseIDs}
+		}
+		r := owner.do(http.MethodPost, "/api/admin/invites", body)
+		wantStatus(t, r, http.StatusCreated, "")
+		var inv httpapi.CreateInvite201JSONResponse
+		r.json(t, &inv)
+		u, _ := url.Parse(inv.Url)
+		return u.Query().Get("invite")
+	}
+	courses := func(c *client) []httpapi.CourseSummary {
+		t.Helper()
+		r := c.do(http.MethodGet, "/api/courses", nil)
+		wantStatus(t, r, http.StatusOK, "")
+		var cs []httpapi.CourseSummary
+		r.json(t, &cs)
+		return cs
+	}
+	learnerID := func(email string) string {
+		t.Helper()
+		var ls []httpapi.Learner
+		owner.do(http.MethodGet, "/api/admin/learners", nil).json(t, &ls)
+		for _, l := range ls {
+			if string(l.Email) == email {
+				return l.Id.String()
+			}
+		}
+		t.Fatalf("no learner %s", email)
+		return ""
+	}
+
+	// Unknown Course on an invite → 422.
+	wantStatus(t, owner.do(http.MethodPost, "/api/admin/invites", map[string]any{"courseIds": []string{uuid.NewString()}}), http.StatusUnprocessableEntity, "unknown_course")
+
+	// An invite without Courses grants nothing: the Course is invisible (404).
+	none := h.client()
+	wantStatus(t, googleLogin(t, none, "none@example.com", invite()), http.StatusFound, "")
+	if cs := courses(none); len(cs) != 0 {
+		t.Fatalf("no-access learner sees %+v", cs)
+	}
+	for _, p := range []string{"/api/courses/" + courseID, "/api/courses/" + courseID + "/mastery", "/api/concepts/" + h.env.Concepts["a"].String()} {
+		wantStatus(t, none.do(http.MethodGet, p, nil), http.StatusNotFound, "not_found")
+	}
+	wantStatus(t, none.do(http.MethodPost, "/api/sessions", map[string]any{"kind": "quiz", "courseId": courseID, "conceptId": h.env.Concepts["a"]}), http.StatusNotFound, "not_found")
+
+	// An invite with the Course grants it on signup; the invite lists it.
+	with := h.client()
+	wantStatus(t, googleLogin(t, with, "with@example.com", invite(courseID)), http.StatusFound, "")
+	if cs := courses(with); len(cs) != 1 || cs[0].Id.String() != courseID {
+		t.Fatalf("invited learner sees %+v", cs)
+	}
+	sess := createSession(t, with, map[string]any{"kind": "quiz", "courseId": courseID, "conceptId": h.env.Concepts["a"]})
+	var invs []httpapi.Invite
+	owner.do(http.MethodGet, "/api/admin/invites", nil).json(t, &invs)
+	granted := 0
+	for _, i := range invs {
+		if i.CourseIds != nil && len(*i.CourseIds) == 1 && (*i.CourseIds)[0].String() == courseID {
+			granted++
+		}
+	}
+	if granted != 1 {
+		t.Fatalf("invites %+v", invs)
+	}
+
+	// The Owner grants a Course to the no-access Learner.
+	noneID := learnerID("none@example.com")
+	r := owner.do(http.MethodPut, "/api/admin/learners/"+noneID+"/courses", map[string]any{"courseIds": []string{courseID, courseID}})
+	wantStatus(t, r, http.StatusOK, "")
+	var l httpapi.Learner
+	r.json(t, &l)
+	if l.CourseIds == nil || len(*l.CourseIds) != 1 {
+		t.Fatalf("set courses %+v", l)
+	}
+	if cs := courses(none); len(cs) != 1 {
+		t.Fatalf("granted learner sees %+v", cs)
+	}
+
+	// Revoking closes the Course and the Learner's open sessions in it.
+	withID := learnerID("with@example.com")
+	wantStatus(t, owner.do(http.MethodPut, "/api/admin/learners/"+withID+"/courses", map[string]any{"courseIds": []string{}}), http.StatusOK, "")
+	if cs := courses(with); len(cs) != 0 {
+		t.Fatalf("revoked learner sees %+v", cs)
+	}
+	wantStatus(t, with.do(http.MethodGet, "/api/sessions/"+sess.Id.String()+"/next", nil), http.StatusNotFound, "not_found")
+
+	// The Owner always sees every Course and can't be restricted.
+	if cs := courses(owner); len(cs) != 1 {
+		t.Fatalf("owner sees %+v", cs)
+	}
+	ownerID := learnerID("boss@example.com")
+	wantStatus(t, owner.do(http.MethodPut, "/api/admin/learners/"+ownerID+"/courses", map[string]any{"courseIds": []string{}}), http.StatusUnprocessableEntity, "owner_has_all_courses")
+	wantStatus(t, owner.do(http.MethodPut, "/api/admin/learners/"+uuid.NewString()+"/courses", map[string]any{"courseIds": []string{}}), http.StatusNotFound, "not_found")
+	wantStatus(t, owner.do(http.MethodPut, "/api/admin/learners/"+noneID+"/courses", map[string]any{"courseIds": []string{uuid.NewString()}}), http.StatusUnprocessableEntity, "unknown_course")
 }

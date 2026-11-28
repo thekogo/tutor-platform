@@ -106,8 +106,21 @@ func (e *Env) ActiveQuestions(t testing.TB, n, difficulty int, primary string, o
 	return ids
 }
 
-// Learner creates a Learner and returns its Actor.
+// Learner creates a Learner and returns its Actor. A non-Owner Learner is
+// granted the fixture Course; use NoAccessLearner for one without access.
 func (e *Env) Learner(t testing.TB, email string, owner bool) app.Actor {
+	t.Helper()
+	a := e.NoAccessLearner(t, email, owner)
+	if !owner {
+		if err := e.Q.GrantCourseAccess(context.Background(), store.GrantCourseAccessParams{LearnerID: a.LearnerID, CourseIds: []uuid.UUID{e.CourseID}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return a
+}
+
+// NoAccessLearner creates a Learner with no Course Access and returns its Actor.
+func (e *Env) NoAccessLearner(t testing.TB, email string, owner bool) app.Actor {
 	t.Helper()
 	l, err := e.Q.CreateLearner(context.Background(), store.CreateLearnerParams{Email: email, Name: email, IsOwner: owner})
 	if err != nil {

@@ -112,7 +112,7 @@ type SessionResult struct {
 
 // CreateSession starts a study session for the Actor.
 func (s *Service) CreateSession(ctx context.Context, a Actor, in CreateSessionInput) (SessionView, error) {
-	g, err := s.Graph(ctx, in.CourseID)
+	g, err := s.accessibleGraph(ctx, a, in.CourseID)
 	if err != nil {
 		return SessionView{}, err
 	}
@@ -263,6 +263,10 @@ func (s *Service) loadSession(ctx context.Context, q *store.Queries, a Actor, id
 	}
 	if sess.LearnerID != a.LearnerID && (mutate || !a.IsOwner) {
 		return sess, notFound("session") // never reveal other Learners' sessions
+	}
+	// Revoking Course Access also closes the Learner's sessions in that Course.
+	if err := s.requireCourseAccess(ctx, a, sess.CourseID); err != nil {
+		return sess, notFound("session")
 	}
 	return sess, nil
 }

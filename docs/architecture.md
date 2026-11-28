@@ -61,7 +61,9 @@ scripts/                    dev utilities (graph_check.py)
 
 **Question serving rules:** only Active Questions; Exam Questions never appear in Quizzes; prefer Questions the Learner hasn't answered; when a Concept's pool is exhausted, serve repeats and raise a Content Request.
 
-**Auth:** Google OIDC, invite-only. First login with no Learners → that person becomes Owner. Others need a valid invite token. Sessions are opaque random tokens stored hashed in Postgres, sent as `HttpOnly; Secure; SameSite=Lax` cookie. State-changing requests require a matching `Origin`. `AUTH_DEV_LOGIN=true` enables `POST /api/auth/dev-login` for local dev and e2e only.
+**Auth:** Google OIDC, invite-only. First login with no Learners → that person becomes Owner. Others need a valid invite token. Sessions are opaque random tokens stored hashed in Postgres, sent as `HttpOnly; Secure; SameSite=Lax` cookie. State-changing requests require a matching `Origin`. `AUTH_DEV_LOGIN=true` enables `POST /api/auth/dev-login` for local dev and e2e only (new dev-login Learners get every existing Course).
+
+**Course Access:** a Learner may study only the Courses the Owner granted (`course_access`); the Owner implicitly has every Course. Access is set per Learner from `/admin` (`PUT /api/admin/learners/{id}/courses`) or chosen on an invite (`invite_courses`, granted on signup). Every course-scoped use case checks it in `app` and answers 404 for a Course without access, so it isn't revealed; revoking access also closes the Learner's open sessions in that Course. A new Course is not granted to anyone automatically.
 
 **Tutor Chat** (ADR 0004): `POST /api/sessions/{id}/questions/{qid}/help` with the conversation so far. `app.AskHelp` checks the session is the Learner's own, open, a **Quiz**, and contains the Question; builds a system prompt with the stem, choices, answer key and Explanation marked confidential plus tutoring rules (hint one step at a time, never reveal the key or final answer); and calls the configured OpenAI-compatible gateway (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`). Stateless: nothing is stored. In-memory per-Learner limit (`AI_HELP_PER_HOUR`). `ServedQuestion.helpAvailable` tells the UI when to offer it.
 On a Concept page, `POST /api/concepts/{id}/help` (`app.AskConceptHelp`) does the same with the Concept's Lesson, Topic, Prerequisites, dependents and the Learner's Mastery as context, and rules to explain and stay on the Concept; `ConceptDetail.helpAvailable` gates it. Both share the Learner's hourly budget.
@@ -88,7 +90,7 @@ On a Concept page, `POST /api/concepts/{id}/help` (`app.AskConceptHelp`) does th
 
 ## Data model (PostgreSQL)
 
-`learners(id, email, name, is_owner, created_at)` · `invites(token_hash, created_by, expires_at, used_by)` · `sessions(token_hash, learner_id, expires_at)`
+`learners(id, email, name, is_owner, created_at)` · `invites(token_hash, created_by, expires_at, used_by)` · `invite_courses(invite_id, course_id)` · `course_access(learner_id, course_id)` · `sessions(token_hash, learner_id, expires_at)`
 `courses` · `topics(course_id, slug, name, exam_weight NULL)` · `concepts(topic_id, slug, name, archived_at)` · `prerequisites(concept_id, prerequisite_id)`
 `lessons(concept_id, body_md, updated_at)`
 `questions(id, course_id, stem_md, explanation_md, difficulty 1-3, format, source, status, verification_note)` · `question_choices(question_id, label, body_md, is_correct)` · `question_concepts(question_id, concept_id, is_primary)`
@@ -105,7 +107,7 @@ Slugs from `graph.yaml` are stable external IDs; DB uses UUIDs internally.
 
 Next.js App Router, TypeScript strict, Tailwind. Thai UI copy. Built as a static export (`output: "export"`) and served by nginx, which proxies same-origin `/api/*` to the backend; pages load data in the browser via a typed client generated from `api/openapi.yaml`, and ids travel as `?id=` query params. Math: `react-markdown` + `remark-math` + `rehype-katex`. Mastery Map: `@xyflow/react` + `dagre` layout, Concepts colored by Mastery Level, grouped by Topic.
 
-Pages: login · `/` Course selection (one card per Course with the Learner's Mastery summary, Placement Test status and active Learning Path) · under `/courses/[id]`: dashboard (top Recommendation with its reason path, other Root Causes, Mastery Map preview), `map`, `learning-path`, `reports/formats` · `/concepts/[id]` (Lesson + start Quiz; Course from `ConceptDetail.courseId`) · `/sessions/[id]` (Quiz/Diagnostic/Placement one-at-a-time with immediate feedback + Flag; Exam timed, feedback at end) · `/sessions/[id]/result` · `/admin` (Owner: invites, Flags, Content Requests, learners). Placement Test status is per Course (`CourseSummary.placementDone`). Branding lives in `frontend/src/lib/brand.ts` and is Course-neutral.
+Pages: login · `/` Course selection (one card per Course with the Learner's Mastery summary, Placement Test status and active Learning Path) · under `/courses/[id]`: dashboard (top Recommendation with its reason path, other Root Causes, Mastery Map preview), `map`, `learning-path`, `reports/formats` · `/concepts/[id]` (Lesson + start Quiz; Course from `ConceptDetail.courseId`) · `/sessions/[id]` (Quiz/Diagnostic/Placement one-at-a-time with immediate feedback + Flag; Exam timed, feedback at end) · `/sessions/[id]/result` · `/admin` (Owner: invites with Course selection, Flags, Content Requests, learners with per-Course access checkboxes). Placement Test status is per Course (`CourseSummary.placementDone`). Branding lives in `frontend/src/lib/brand.ts` and is Course-neutral.
 
 ## Quality & SDLC
 

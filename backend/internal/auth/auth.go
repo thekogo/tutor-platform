@@ -2,7 +2,7 @@
 // use), opaque session tokens stored as SHA-256 hashes, and invites.
 //
 // The first-ever Learner to log in becomes the Owner. Everyone else needs a
-// valid, unused, unexpired invite token.
+// valid, unused, unexpired invite token, and gets the Courses that invite grants.
 package auth
 
 import (
@@ -166,8 +166,13 @@ func (s *Service) resolveLogin(ctx context.Context, email, name, inviteToken str
 			return err
 		}
 		if skipInvite {
+			// Dev login: new Learners may study every Course, so local dev and
+			// e2e work without the Owner granting Course Access first.
 			learner, err = q.CreateLearner(ctx, store.CreateLearnerParams{Email: email, Name: name})
-			return err
+			if err != nil {
+				return err
+			}
+			return q.GrantAllCourses(ctx, learner.ID)
 		}
 		if inviteToken == "" {
 			return app.E(app.KindForbidden, "invite_required", "this platform is invite-only")
@@ -186,7 +191,10 @@ func (s *Service) resolveLogin(ctx context.Context, email, name, inviteToken str
 		if err != nil {
 			return err
 		}
-		return q.UseInvite(ctx, store.UseInviteParams{ID: inv.ID, UsedBy: &learner.ID})
+		if err := q.UseInvite(ctx, store.UseInviteParams{ID: inv.ID, UsedBy: &learner.ID}); err != nil {
+			return err
+		}
+		return q.GrantInviteCourses(ctx, store.GrantInviteCoursesParams{LearnerID: learner.ID, InviteID: inv.ID})
 	})
 	if err != nil && store.IsUniqueViolation(err) {
 		return store.Learner{}, app.E(app.KindConflict, "login_conflict", "concurrent login; please retry")
@@ -200,11 +208,13 @@ type InviteView struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 	UsedBy    *string
+	CourseIDs []uuid.UUID // Courses granted when the invite is used
 	URL       string
 }
 
-// CreateInvite creates an invite (Owner only) and returns its one-time URL.
-func (s *Service) CreateInvite(ctx context.Context, a app.Actor) (InviteView, error) {
+// CreateInvite creates an invite (Owner only) that grants courseIDs to the
+// Learner who uses it, and returns its one-time URL.
+func (s *Service) CreateInvite(ctx context.Context, a app.Actor, courseIDs []uuid.UUID) (InviteView, error) {
 	if !a.IsOwner {
 		return InviteView{}, app.E(app.KindForbidden, "forbidden", "only the Owner may invite")
 	}
@@ -212,14 +222,28 @@ func (s *Service) CreateInvite(ctx context.Context, a app.Actor) (InviteView, er
 	if err != nil {
 		return InviteView{}, err
 	}
-	inv, err := s.q.CreateInvite(ctx, store.CreateInviteParams{TokenHash: HashToken(token), CreatedBy: a.LearnerID, ExpiresAt: s.now().Add(InviteTTL)})
-	if err != nil {
-		return InviteView{}, err
-	}
-	return InviteView{
-		ID: inv.ID, CreatedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt,
-		URL: strings.TrimRight(s.cfg.AppBaseURL, "/") + "/login?invite=" + token,
-	}, nil
+	var view InviteView
+	err = store.InTx(ctx, s.pool, func(q *store.Queries) error {
+		ids, err := app.ValidateCourseIDs(ctx, q, courseIDs)
+		if err != nil {
+			return err
+		}
+		inv, err := q.CreateInvite(ctx, store.CreateInviteParams{TokenHash: HashToken(token), CreatedBy: a.LearnerID, ExpiresAt: s.now().Add(InviteTTL)})
+		if err != nil {
+			return err
+		}
+		if len(ids) > 0 {
+			if err := q.AddInviteCourses(ctx, store.AddInviteCoursesParams{InviteID: inv.ID, CourseIds: ids}); err != nil {
+				return err
+			}
+		}
+		view = InviteView{
+			ID: inv.ID, CreatedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, CourseIDs: ids,
+			URL: strings.TrimRight(s.cfg.AppBaseURL, "/") + "/login?invite=" + token,
+		}
+		return nil
+	})
+	return view, err
 }
 
 // ListInvites lists invites (Owner only).
@@ -231,10 +255,22 @@ func (s *Service) ListInvites(ctx context.Context, a app.Actor) ([]InviteView, e
 	if err != nil {
 		return nil, err
 	}
+	ics, err := s.q.ListInviteCourses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	courses := map[uuid.UUID][]uuid.UUID{}
+	for _, ic := range ics {
+		courses[ic.InviteID] = append(courses[ic.InviteID], ic.CourseID)
+	}
 	out := make([]InviteView, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		out = append(out, InviteView{ID: r.ID, CreatedAt: r.CreatedAt, ExpiresAt: r.ExpiresAt, UsedBy: r.UsedByEmail})
+		ids := courses[r.ID]
+		if ids == nil {
+			ids = []uuid.UUID{}
+		}
+		out = append(out, InviteView{ID: r.ID, CreatedAt: r.CreatedAt, ExpiresAt: r.ExpiresAt, UsedBy: r.UsedByEmail, CourseIDs: ids})
 	}
 	return out, nil
 }

@@ -82,7 +82,7 @@ paths:
       operationId: listCourses
       responses:
         "200":
-          description: Courses
+          description: The Courses the current Learner may study (every Course for the Owner)
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/CourseSummary" } }
@@ -352,6 +352,17 @@ paths:
     post:
       tags: [admin]
       operationId: createInvite
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                courseIds:
+                  type: array
+                  description: Courses the invited Learner gets access to on signup.
+                  items: { type: string, format: uuid }
       responses:
         "201":
           description: Invite created; the token and URL are only returned once.
@@ -365,17 +376,44 @@ paths:
                     properties:
                       url: { type: string }
         "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /admin/learners:
     get:
       tags: [admin]
       operationId: listLearners
       responses:
         "200":
-          description: Learners
+          description: Learners, each with the Courses they may study (courseIds)
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Learner" } }
         "403": { $ref: "#/components/responses/Error" }
+  /admin/learners/{learnerId}/courses:
+    parameters: [{ $ref: "#/components/parameters/LearnerId" }]
+    put:
+      tags: [admin]
+      operationId: setLearnerCourses
+      summary: Replace the set of Courses a Learner may study. The Owner always has every Course.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courseIds]
+              properties:
+                courseIds:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The updated Learner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Learner" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /admin/flags:
     get:
       tags: [admin]
@@ -421,6 +459,7 @@ components:
     ConceptId: { name: conceptId, in: path, required: true, schema: { type: string, format: uuid } }
     SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
     QuestionId: { name: questionId, in: path, required: true, schema: { type: string, format: uuid } }
+    LearnerId: { name: learnerId, in: path, required: true, schema: { type: string, format: uuid } }
 
   responses:
     Error:
@@ -444,6 +483,10 @@ components:
         name: { type: string }
         isOwner: { type: boolean }
         placementDone: { type: boolean, description: Finished a Placement Test in any Course }
+        courseIds:
+          type: array
+          description: Admin views only. Courses this Learner may study; empty for the Owner, who has every Course.
+          items: { type: string, format: uuid }
 
     Invite:
       type: object
@@ -453,6 +496,10 @@ components:
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
         usedBy: { type: string, nullable: true }
+        courseIds:
+          type: array
+          description: Courses granted to the Learner who uses this invite.
+          items: { type: string, format: uuid }
 
     CourseSummary:
       type: object

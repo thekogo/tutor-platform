@@ -52,7 +52,7 @@ func TestImportRealGraphsIdempotentAndSeparate(t *testing.T) {
 		ids[first.CourseID] = slug
 	}
 	// Importing the second Course must leave the first one intact.
-	cs, err := svc.ListCourses(context.Background())
+	cs, err := svc.ListCourses(context.Background(), app.Actor{IsOwner: true})
 	if err != nil {
 		t.Fatal(err)
 	}

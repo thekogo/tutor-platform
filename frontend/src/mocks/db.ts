@@ -176,7 +176,7 @@ function seedState(): MockState {
   return {
     learners: [
       { id: OWNER_ID, email: "owner@example.com", name: "ปกรณ์ วงศ์ใหญ่", isOwner: true, placementDone: false },
-      { id: LEARNER_ID, email: "mintra@example.com", name: "มินตรา ใจดี", isOwner: false, placementDone: true },
+      { id: LEARNER_ID, email: "mintra@example.com", name: "มินตรา ใจดี", isOwner: false, placementDone: true, courseIds: [COURSE_ID] },
     ],
     autoLogin: false,
     mastery,
@@ -209,8 +209,8 @@ function seedState(): MockState {
       },
     ],
     invites: [
-      { id: mockId("invite", "1"), createdAt: iso(10 * day), expiresAt: iso(3 * day), usedBy: "มินตรา ใจดี" },
-      { id: mockId("invite", "2"), createdAt: iso(day), expiresAt: new Date(now + 6 * day).toISOString(), usedBy: null },
+      { id: mockId("invite", "1"), createdAt: iso(10 * day), expiresAt: iso(3 * day), usedBy: "มินตรา ใจดี", courseIds: [COURSE_ID] },
+      { id: mockId("invite", "2"), createdAt: iso(day), expiresAt: new Date(now + 6 * day).toISOString(), usedBy: null, courseIds: [] },
     ],
     retired: new Set(),
     formatBaseline: {
