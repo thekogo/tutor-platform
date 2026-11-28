@@ -8,7 +8,9 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -257,18 +259,22 @@ type HelpRequest struct {
 
 // Invite defines model for Invite.
 type Invite struct {
-	CreatedAt time.Time          `json:"createdAt"`
-	ExpiresAt time.Time          `json:"expiresAt"`
-	Id        openapi_types.UUID `json:"id"`
-	UsedBy    *string            `json:"usedBy,omitempty"`
+	// CourseIds Courses granted to the Learner who uses this invite.
+	CourseIds *[]openapi_types.UUID `json:"courseIds,omitempty"`
+	CreatedAt time.Time             `json:"createdAt"`
+	ExpiresAt time.Time             `json:"expiresAt"`
+	Id        openapi_types.UUID    `json:"id"`
+	UsedBy    *string               `json:"usedBy,omitempty"`
 }
 
 // Learner defines model for Learner.
 type Learner struct {
-	Email   openapi_types.Email `json:"email"`
-	Id      openapi_types.UUID  `json:"id"`
-	IsOwner bool                `json:"isOwner"`
-	Name    string              `json:"name"`
+	// CourseIds Admin views only. Courses this Learner may study; empty for the Owner, who has every Course.
+	CourseIds *[]openapi_types.UUID `json:"courseIds,omitempty"`
+	Email     openapi_types.Email   `json:"email"`
+	Id        openapi_types.UUID    `json:"id"`
+	IsOwner   bool                  `json:"isOwner"`
+	Name      string                `json:"name"`
 
 	// PlacementDone Finished a Placement Test in any Course
 	PlacementDone *bool `json:"placementDone,omitempty"`
@@ -407,6 +413,9 @@ type ConceptId = openapi_types.UUID
 // CourseId defines model for CourseId.
 type CourseId = openapi_types.UUID
 
+// LearnerId defines model for LearnerId.
+type LearnerId = openapi_types.UUID
+
 // QuestionId defines model for QuestionId.
 type QuestionId = openapi_types.UUID
 
@@ -416,6 +425,17 @@ type SessionId = openapi_types.UUID
 // ListFlagsParams defines parameters for ListFlags.
 type ListFlagsParams struct {
 	Open *bool `form:"open,omitempty" json:"open,omitempty"`
+}
+
+// CreateInviteJSONBody defines parameters for CreateInvite.
+type CreateInviteJSONBody struct {
+	// CourseIds Courses the invited Learner gets access to on signup.
+	CourseIds *[]openapi_types.UUID `json:"courseIds,omitempty"`
+}
+
+// SetLearnerCoursesJSONBody defines parameters for SetLearnerCourses.
+type SetLearnerCoursesJSONBody struct {
+	CourseIds []openapi_types.UUID `json:"courseIds"`
 }
 
 // DevLoginJSONBody defines parameters for DevLogin.
@@ -452,6 +472,12 @@ type SubmitAnswerJSONBody struct {
 	QuestionId  openapi_types.UUID `json:"questionId"`
 	TimeSpentMs *int               `json:"timeSpentMs,omitempty"`
 }
+
+// CreateInviteJSONRequestBody defines body for CreateInvite for application/json ContentType.
+type CreateInviteJSONRequestBody CreateInviteJSONBody
+
+// SetLearnerCoursesJSONRequestBody defines body for SetLearnerCourses for application/json ContentType.
+type SetLearnerCoursesJSONRequestBody SetLearnerCoursesJSONBody
 
 // DevLoginJSONRequestBody defines body for DevLogin for application/json ContentType.
 type DevLoginJSONRequestBody DevLoginJSONBody
@@ -491,6 +517,9 @@ type ServerInterface interface {
 
 	// (GET /admin/learners)
 	ListLearners(w http.ResponseWriter, r *http.Request)
+	// Replace the set of Courses a Learner may study. The Owner always has every Course.
+	// (PUT /admin/learners/{learnerId}/courses)
+	SetLearnerCourses(w http.ResponseWriter, r *http.Request, learnerId LearnerId)
 
 	// (POST /admin/questions/{questionId}/retire)
 	RetireQuestion(w http.ResponseWriter, r *http.Request, questionId QuestionId)
@@ -681,6 +710,37 @@ func (siw *ServerInterfaceWrapper) ListLearners(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListLearners(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetLearnerCourses operation middleware
+func (siw *ServerInterfaceWrapper) SetLearnerCourses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learnerId" -------------
+	var learnerId LearnerId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learnerId", r.PathValue("learnerId"), &learnerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learnerId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetLearnerCourses(w, r, learnerId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1552,6 +1612,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/admin/invites", wrapper.ListInvites)
 	m.HandleFunc("POST "+options.BaseURL+"/admin/invites", wrapper.CreateInvite)
 	m.HandleFunc("GET "+options.BaseURL+"/admin/learners", wrapper.ListLearners)
+	m.HandleFunc("PUT "+options.BaseURL+"/admin/learners/{learnerId}/courses", wrapper.SetLearnerCourses)
 	m.HandleFunc("POST "+options.BaseURL+"/admin/questions/{questionId}/retire", wrapper.RetireQuestion)
 	m.HandleFunc("POST "+options.BaseURL+"/auth/dev-login", wrapper.DevLogin)
 	m.HandleFunc("GET "+options.BaseURL+"/auth/google/callback", wrapper.GoogleCallback)
@@ -1660,6 +1721,7 @@ func (response ListInvites403JSONResponse) VisitListInvitesResponse(w http.Respo
 }
 
 type CreateInviteRequestObject struct {
+	Body *CreateInviteJSONRequestBody
 }
 
 type CreateInviteResponseObject interface {
@@ -1667,11 +1729,13 @@ type CreateInviteResponseObject interface {
 }
 
 type CreateInvite201JSONResponse struct {
-	CreatedAt time.Time          `json:"createdAt"`
-	ExpiresAt time.Time          `json:"expiresAt"`
-	Id        openapi_types.UUID `json:"id"`
-	Url       string             `json:"url"`
-	UsedBy    *string            `json:"usedBy,omitempty"`
+	// CourseIds Courses granted to the Learner who uses this invite.
+	CourseIds *[]openapi_types.UUID `json:"courseIds,omitempty"`
+	CreatedAt time.Time             `json:"createdAt"`
+	ExpiresAt time.Time             `json:"expiresAt"`
+	Id        openapi_types.UUID    `json:"id"`
+	Url       string                `json:"url"`
+	UsedBy    *string               `json:"usedBy,omitempty"`
 }
 
 func (response CreateInvite201JSONResponse) VisitCreateInviteResponse(w http.ResponseWriter) error {
@@ -1686,6 +1750,15 @@ type CreateInvite403JSONResponse struct{ ErrorJSONResponse }
 func (response CreateInvite403JSONResponse) VisitCreateInviteResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInvite422JSONResponse Error
+
+func (response CreateInvite422JSONResponse) VisitCreateInviteResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1711,6 +1784,51 @@ type ListLearners403JSONResponse struct{ ErrorJSONResponse }
 func (response ListLearners403JSONResponse) VisitListLearnersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetLearnerCoursesRequestObject struct {
+	LearnerId LearnerId `json:"learnerId"`
+	Body      *SetLearnerCoursesJSONRequestBody
+}
+
+type SetLearnerCoursesResponseObject interface {
+	VisitSetLearnerCoursesResponse(w http.ResponseWriter) error
+}
+
+type SetLearnerCourses200JSONResponse Learner
+
+func (response SetLearnerCourses200JSONResponse) VisitSetLearnerCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetLearnerCourses403JSONResponse struct{ ErrorJSONResponse }
+
+func (response SetLearnerCourses403JSONResponse) VisitSetLearnerCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetLearnerCourses404JSONResponse Error
+
+func (response SetLearnerCourses404JSONResponse) VisitSetLearnerCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetLearnerCourses422JSONResponse Error
+
+func (response SetLearnerCourses422JSONResponse) VisitSetLearnerCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2404,6 +2522,9 @@ type StrictServerInterface interface {
 
 	// (GET /admin/learners)
 	ListLearners(ctx context.Context, request ListLearnersRequestObject) (ListLearnersResponseObject, error)
+	// Replace the set of Courses a Learner may study. The Owner always has every Course.
+	// (PUT /admin/learners/{learnerId}/courses)
+	SetLearnerCourses(ctx context.Context, request SetLearnerCoursesRequestObject) (SetLearnerCoursesResponseObject, error)
 
 	// (POST /admin/questions/{questionId}/retire)
 	RetireQuestion(ctx context.Context, request RetireQuestionRequestObject) (RetireQuestionResponseObject, error)
@@ -2588,6 +2709,16 @@ func (sh *strictHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
 func (sh *strictHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 	var request CreateInviteRequestObject
 
+	var body CreateInviteJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.CreateInvite(ctx, request.(CreateInviteRequestObject))
 	}
@@ -2625,6 +2756,39 @@ func (sh *strictHandler) ListLearners(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListLearnersResponseObject); ok {
 		if err := validResponse.VisitListLearnersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetLearnerCourses operation middleware
+func (sh *strictHandler) SetLearnerCourses(w http.ResponseWriter, r *http.Request, learnerId LearnerId) {
+	var request SetLearnerCoursesRequestObject
+
+	request.LearnerId = learnerId
+
+	var body SetLearnerCoursesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetLearnerCourses(ctx, request.(SetLearnerCoursesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetLearnerCourses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetLearnerCoursesResponseObject); ok {
+		if err := validResponse.VisitSetLearnerCoursesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

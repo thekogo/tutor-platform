@@ -50,6 +50,12 @@ type Course struct {
 	CreatedAt time.Time
 }
 
+type CourseAccess struct {
+	LearnerID uuid.UUID
+	CourseID  uuid.UUID
+	GrantedAt time.Time
+}
+
 type Exam struct {
 	ID         uuid.UUID
 	CourseID   uuid.UUID
@@ -82,6 +88,11 @@ type Invite struct {
 	ExpiresAt time.Time
 	UsedBy    *uuid.UUID
 	UsedAt    *time.Time
+}
+
+type InviteCourse struct {
+	InviteID uuid.UUID
+	CourseID uuid.UUID
 }
 
 type Learner struct {

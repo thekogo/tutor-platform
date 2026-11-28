@@ -444,6 +444,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/learners/{learnerId}/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                learnerId: components["parameters"]["LearnerId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the set of Courses a Learner may study. The Owner always has every Course. */
+        put: operations["setLearnerCourses"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/flags": {
         parameters: {
             query?: never;
@@ -512,6 +531,8 @@ export interface components {
             isOwner: boolean;
             /** @description Finished a Placement Test in any Course */
             placementDone?: boolean;
+            /** @description Admin views only. Courses this Learner may study; empty for the Owner, who has every Course. */
+            courseIds?: string[];
         };
         Invite: {
             /** Format: uuid */
@@ -521,6 +542,8 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             usedBy?: string | null;
+            /** @description Courses granted to the Learner who uses this invite. */
+            courseIds?: string[];
         };
         CourseSummary: {
             /** Format: uuid */
@@ -790,6 +813,7 @@ export interface components {
         ConceptId: string;
         SessionId: string;
         QuestionId: string;
+        LearnerId: string;
     };
     requestBodies: never;
     headers: never;
@@ -914,7 +938,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Courses */
+            /** @description The Courses the current Learner may study (every Course for the Owner) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1411,7 +1435,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Courses the invited Learner gets access to on signup. */
+                    courseIds?: string[];
+                };
+            };
+        };
         responses: {
             /** @description Invite created; the token and URL are only returned once. */
             201: {
@@ -1425,6 +1456,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+            422: components["responses"]["Error"];
         };
     };
     listLearners: {
@@ -1436,7 +1468,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Learners */
+            /** @description Learners, each with the Courses they may study (courseIds) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1446,6 +1478,37 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+        };
+    };
+    setLearnerCourses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                learnerId: components["parameters"]["LearnerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    courseIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description The updated Learner */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Learner"];
+                };
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            422: components["responses"]["Error"];
         };
     };
     listFlags: {

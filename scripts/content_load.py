@@ -65,9 +65,9 @@ def validate(path):
             errs.append(f"{tag}: {len(correct)} correct"); continue
         if len({c["body_md"].strip() for c in ch}) != len(ch):
             errs.append(f"{tag}: duplicate choice text")
-        m = re.findall(rf"ตอบ\s*\(?([{LABELS}])\)?", q.get("explanation_md", ""))
+        m = re.findall(rf"(?:ตอบ|Answer:)\s*\(?([{LABELS}])\)?", q.get("explanation_md", ""))
         if not m:
-            errs.append(f"{tag}: no 'ตอบ X' in explanation")
+            errs.append(f"{tag}: no 'ตอบ X' or 'Answer: X' in explanation")
         elif m[-1] != correct[0]:
             errs.append(f"{tag}: explanation says {m[-1]} but key is {correct[0]}")
         if not q.get("stem_md", "").strip():

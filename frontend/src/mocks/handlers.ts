@@ -59,6 +59,11 @@ function error(status: number, code: string, message: string) {
 const unauthorized = () => error(401, "unauthorized", "กรุณาเข้าสู่ระบบ");
 const notFound = (what = "ไม่พบข้อมูล") => error(404, "not_found", what);
 
+/** Course Access: the Owner has every Course; others only those granted. */
+function canStudy(me: Learner, courseId: string): boolean {
+  return me.isOwner || (me.courseIds ?? []).includes(courseId);
+}
+
 function currentLearner(cookies: Record<string, string>): Learner | null {
   const state = db();
   const token = cookies[SESSION_COOKIE];
@@ -254,7 +259,8 @@ export const handlers = [
     const state = db();
     let learner = state.learners.find((l) => l.email.toLowerCase() === body.email!.toLowerCase());
     if (!learner) {
-      learner = { id: mockId("learner", body.email), email: body.email, name: body.name || body.email.split("@")[0], isOwner: false, placementDone: false };
+      // Dev login grants every Course (matches the backend).
+      learner = { id: mockId("learner", body.email), email: body.email, name: body.name || body.email.split("@")[0], isOwner: false, placementDone: false, courseIds: [COURSE_ID] };
       state.learners.push(learner);
     }
     return new HttpResponse(null, { status: 204, headers: { "Set-Cookie": sessionCookie(learner.id) } });
@@ -264,7 +270,10 @@ export const handlers = [
   ),
   http.get(api("/me"), ({ cookies }) => {
     const me = currentLearner(cookies);
-    return me ? json<Learner>(me) : unauthorized();
+    if (!me) return unauthorized();
+    const { courseIds: _ids, ...rest } = me; // admin views only
+    void _ids;
+    return json<Learner>(rest);
   }),
 
   // courses
@@ -272,11 +281,13 @@ export const handlers = [
     const me = currentLearner(cookies);
     if (!me) return unauthorized();
     const { id, slug, name, goal } = courseGraph;
+    if (!canStudy(me, id)) return json<CourseSummary[]>([]);
     return json<CourseSummary[]>([{ id, slug, name, goal, placementDone: me.placementDone ?? false }]);
   }),
   http.get(api("/courses/:courseId"), ({ cookies, params }) => {
-    if (!currentLearner(cookies)) return unauthorized();
-    return params.courseId === COURSE_ID ? json(courseGraph) : notFound("ไม่พบคอร์ส");
+    const me = currentLearner(cookies);
+    if (!me) return unauthorized();
+    return params.courseId === COURSE_ID && canStudy(me, COURSE_ID) ? json(courseGraph) : notFound("ไม่พบคอร์ส");
   }),
   http.get(api("/courses/:courseId/exams"), ({ cookies, params }) => {
     const me = currentLearner(cookies);
@@ -516,9 +527,12 @@ export const handlers = [
 
   // admin
   http.get(api("/admin/invites"), ({ cookies }) => ownerOnly(cookies) ?? json(db().invites)),
-  http.post(api("/admin/invites"), ({ cookies, request }) => {
+  http.post(api("/admin/invites"), async ({ cookies, request }) => {
     const denied = ownerOnly(cookies);
     if (denied) return denied;
+    const body = (await request.json().catch(() => null)) as { courseIds?: string[] } | null;
+    const courseIds = [...new Set(body?.courseIds ?? [])];
+    if (courseIds.some((id) => id !== COURSE_ID)) return error(422, "unknown_course", "ไม่พบคอร์สที่เลือก");
     const token = newId("invite-token").replace(/-/g, "");
     const now = Date.now();
     const invite: CreatedInvite = {
@@ -526,6 +540,7 @@ export const handlers = [
       createdAt: new Date(now).toISOString(),
       expiresAt: new Date(now + 7 * 86_400_000).toISOString(),
       usedBy: null,
+      courseIds,
       url: `${new URL(request.url).origin}/login?invite=${token}`,
     };
     const { url: _url, ...stored } = invite;
@@ -533,7 +548,21 @@ export const handlers = [
     db().invites.unshift(stored);
     return json(invite, { status: 201 });
   }),
-  http.get(api("/admin/learners"), ({ cookies }) => ownerOnly(cookies) ?? json(db().learners)),
+  http.get(api("/admin/learners"), ({ cookies }) =>
+    ownerOnly(cookies) ?? json(db().learners.map((l) => ({ ...l, courseIds: l.isOwner ? [] : (l.courseIds ?? []) }))),
+  ),
+  http.put(api("/admin/learners/:learnerId/courses"), async ({ cookies, params, request }) => {
+    const denied = ownerOnly(cookies);
+    if (denied) return denied;
+    const learner = db().learners.find((l) => l.id === params.learnerId);
+    if (!learner) return notFound("ไม่พบผู้เรียน");
+    if (learner.isOwner) return error(422, "owner_has_all_courses", "เจ้าของระบบเข้าเรียนได้ทุกคอร์สเสมอ");
+    const body = (await request.json()) as { courseIds?: string[] };
+    const courseIds = [...new Set(body?.courseIds ?? [])];
+    if (courseIds.some((id) => id !== COURSE_ID)) return error(422, "unknown_course", "ไม่พบคอร์สที่เลือก");
+    learner.courseIds = courseIds;
+    return json<Learner>(learner);
+  }),
   http.get(api("/admin/flags"), ({ cookies, request }) => {
     const denied = ownerOnly(cookies);
     if (denied) return denied;

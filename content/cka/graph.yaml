@@ -1,0 +1,313 @@
+# CKA (Certified Kubernetes Administrator) — knowledge graph (draft v0.1)
+#
+# Seed content for the Content Admin agent to import.
+# - topics: mirror the five official exam domains (the 25% Cluster Architecture
+#   domain is split in two), plus one foundations Topic
+# - concepts: graph nodes; `prerequisites` lists Concepts that must come first
+# - question_formats: presentation styles, NOT graph nodes
+# - `# technique:` above each Concept = the hands-on skill / exam technique that
+#   Lessons and Questions for that Concept should teach (for content authors).
+#
+# Exam structure (researched 2026-11-26):
+#   - Online, remotely proctored, performance-based: tasks are solved on a
+#     command line against live Kubernetes clusters (several clusters; each
+#     task names the kubectl context to use). No multiple choice.
+#   - 2 hours. About 15-20 tasks with partial credit per task (secondary
+#     sources; the LF page gives no count). Passing score 66%.
+#   - Exam environment: Kubernetes v1.37 (LF page, and CNCF repo file
+#     CKA_Curriculum_v1.37.pdf; the LF "Curriculum Overview" link still points
+#     to the stale v1.35 PDF).
+#   - $445 exam only; includes one free retake, 12 months to schedule, two
+#     killer.sh simulator sessions (36 h each) per the LF page. Valid 2 years.
+#   - Open book, limited: one browser tab on the allowed docs
+#     (kubernetes.io/docs, kubernetes.io/blog, helm.sh/docs and, per a
+#     secondary source, gateway-api.sigs.k8s.io). Confirm in the Candidate
+#     Handbook before the exam.
+#
+# Official domains and weights (LF page, verbatim competencies):
+#   Troubleshooting 30%
+#     clusters and nodes; cluster components; monitor cluster and application
+#     resource usage; container output streams; services and networking
+#   Cluster Architecture, Installation & Configuration 25%
+#     RBAC; prepare infrastructure; kubeadm create/manage; cluster lifecycle;
+#     highly-available control plane; Helm and Kustomize to install cluster
+#     components; extension interfaces (CNI, CSI, CRI); CRDs and operators
+#   Services & Networking 20%
+#     Pod connectivity; Network Policies; ClusterIP/NodePort/LoadBalancer and
+#     endpoints; Gateway API for Ingress traffic; Ingress controllers and
+#     resources; CoreDNS
+#   Workloads & Scheduling 15%
+#     deployments, rolling update and rollback; ConfigMaps and Secrets;
+#     workload autoscaling; self-healing primitives; Pod admission and
+#     scheduling (limits, node affinity, etc.)
+#   Storage 10%
+#     storage classes and dynamic provisioning; volume types, access modes and
+#     reclaim policies; PVs and PVCs
+#
+# Sources:
+# - Linux Foundation CKA page (domains, competencies, version, price, retake,
+#   simulator, validity)
+#   https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/
+# - CNCF curriculum repo (CKA_Curriculum_v1.37.pdf)  https://github.com/cncf/curriculum
+# - Stéphane Robert CKA guide (task count, allowed docs, Helm scope: install,
+#   change values, inspect, roll back; no chart writing)
+#   https://www.stephane-robert.info/en/docs/conteneurs/orchestrateurs/kubernetes/certifications/cka/
+# - Every Exam Prep / certcloudify (66% pass mark, weights)
+#   https://www.everyexamprep.com/exams/cka  https://certcloudify.com/blog/is-cka-exam-hard/
+#
+# Sourced vs. inferred:
+# - Sourced: the domains, weights and competency list above; every Concept
+#   maps to one of those competencies.
+# - Inferred from common CKA preparation practice, not from the official
+#   curriculum: the foundations Topic, `certificates-pki`, `admission-control`
+#   scope (Pod Security Admission), `volumes-basics`, the prerequisite edges,
+#   and every `# technique:` note.
+#
+# Format decision: the platform marks fixed-answer multiple choice only, but
+# the CKA is entirely hands-on. Questions therefore train recognition and
+# diagnosis (pick the right command, spot the broken manifest line, read
+# command output, name the root cause from symptoms). This does not replace
+# typing speed: Lessons must end with a short lab to run on a local cluster
+# (kind / minikube / kubeadm VMs), and Learners should do both killer.sh
+# sessions before the real exam.
+#
+# exam_weight = domain % / 10. Cluster Architecture (25%) is split evenly over
+# cluster-lifecycle and access-and-extensions (1.25 each; the even split is
+# inferred). Foundations is not an exam domain but every task runs through
+# kubectl, so it gets 0.5 to surface early (inferred).
+
+course:
+  id: cka
+  name: CKA — Certified Kubernetes Administrator
+  goal: สอบผ่าน CKA (Kubernetes v1.37) ด้วยคะแนน 66% ขึ้นไป ภายในเวลา 2 ชั่วโมง
+
+question_formats:
+  - id: command-choice
+    name: เลือกคำสั่งที่ทำงานตามโจทย์ได้ถูกต้อง (kubectl / kubeadm / etcdctl / helm)
+  - id: manifest-fix
+    name: หาบรรทัดผิดใน YAML manifest และวิธีแก้
+  - id: output-reading
+    name: อ่านผลลัพธ์คำสั่ง (get / describe / logs / events) แล้วตีความ
+  - id: scenario-diagnosis
+    name: วิเคราะห์อาการปัญหา หาสาเหตุหรือขั้นตอนถัดไป
+  - id: concept-check
+    name: ทดสอบความเข้าใจแนวคิดและค่าเริ่มต้น
+
+topics:
+  - { id: foundations,            name: พื้นฐาน Kubernetes และ kubectl,                          exam_weight: 0.5 }
+  - { id: cluster-lifecycle,      name: ติดตั้งและดูแลวงจรชีวิตคลัสเตอร์ (kubeadm),                   exam_weight: 1.25 }
+  - { id: access-and-extensions,  name: "RBAC, Helm/Kustomize และ Extension Interfaces",          exam_weight: 1.25 }
+  - { id: workloads-scheduling,   name: Workloads และ Scheduling,                                  exam_weight: 1.5 }
+  - { id: services-networking,    name: Services และ Networking,                                   exam_weight: 2.0 }
+  - { id: storage,                name: Storage,                                                   exam_weight: 1.0 }
+  - { id: troubleshooting,        name: Troubleshooting,                                           exam_weight: 3.0 }
+
+concepts:
+  # ── พื้นฐาน Kubernetes และ kubectl ──────────────────────────────
+  # technique: Draw the request path (kubectl -> kube-apiserver -> etcd; scheduler and controllers watch the API; kubelet runs Pods via the CRI); know which components are static Pods in /etc/kubernetes/manifests and which are systemd services.
+  - id: k8s-architecture
+    topic: foundations
+    name: สถาปัตยกรรม Kubernetes (Control Plane และ Worker Node)
+    prerequisites: []
+  # technique: Never write YAML from scratch: `kubectl create/run/expose ... --dry-run=client -o yaml > f.yaml`, then edit; set `alias k=kubectl` and `export do="--dry-run=client -o yaml"`; use `kubectl explain <res>.spec --recursive` for field names.
+  - id: kubectl-imperative
+    topic: foundations
+    name: kubectl แบบ Imperative และการสร้าง YAML อย่างรวดเร็ว
+    prerequisites: [k8s-architecture]
+  # technique: Check apiVersion/kind/metadata/spec first; labels in a selector must match the Pod template labels exactly; indent with spaces only (set vim `:set ts=2 sw=2 et`).
+  - id: yaml-manifests
+    topic: foundations
+    name: โครงสร้าง YAML Manifest, Labels และ Selectors
+    prerequisites: [k8s-architecture]
+  # technique: Run the task's `kubectl config use-context <ctx>` before anything else; pass `-n <ns>` explicitly or set it on the context; work in the wrong cluster = zero marks.
+  - id: kubeconfig-contexts
+    topic: foundations
+    name: kubeconfig, Contexts และ Namespaces
+    prerequisites: [kubectl-imperative]
+  # technique: Read all tasks' weights first, do high-value quick tasks, flag anything over ~8 min; bookmark doc pages for etcd backup, kubeadm upgrade, NetworkPolicy, PV/PVC, Gateway API; remember `ssh <node>` + `sudo -i` and exit back afterwards.
+  - id: exam-environment-strategy
+    topic: foundations
+    name: สภาพแวดล้อมสอบ การค้นเอกสาร และการบริหารเวลา
+    prerequisites: [kubeconfig-contexts]
+
+  # ── ติดตั้งและดูแลวงจรชีวิตคลัสเตอร์ ───────────────────────────
+  # technique: Follow the kubeadm install doc order: containerd with SystemdCgroup=true, swap off, load overlay + br_netfilter, sysctl net.ipv4.ip_forward=1, install matching kubeadm/kubelet/kubectl and hold them.
+  - id: infra-prep
+    topic: cluster-lifecycle
+    name: เตรียมโครงสร้างพื้นฐานก่อนติดตั้งคลัสเตอร์
+    prerequisites: [k8s-architecture]
+  # technique: `kubeadm init --pod-network-cidr ...` (plus --control-plane-endpoint if HA), copy admin.conf, install a CNI, then `kubeadm token create --print-join-command` on the control plane and run it on workers.
+  - id: kubeadm-install
+    topic: cluster-lifecycle
+    name: สร้างคลัสเตอร์ด้วย kubeadm (init / join)
+    prerequisites: [infra-prep]
+  # technique: One minor version at a time, control plane first: upgrade kubeadm -> `kubeadm upgrade plan` -> `kubeadm upgrade apply vX` (first CP) / `kubeadm upgrade node` (others) -> drain -> upgrade kubelet+kubectl -> restart kubelet -> uncordon.
+  - id: cluster-upgrade
+    topic: cluster-lifecycle
+    name: อัปเกรดคลัสเตอร์และดูแล Node (drain / cordon / uncordon)
+    prerequisites: [kubeadm-install]
+  # technique: Copy the three cert paths from the etcd static Pod manifest into `ETCDCTL_API=3 etcdctl --endpoints --cacert --cert --key snapshot save`; restore with `etcdutl snapshot restore --data-dir <new>` and point the etcd manifest's hostPath at the new dir.
+  - id: etcd-backup-restore
+    topic: cluster-lifecycle
+    name: สำรองและกู้คืน etcd
+    prerequisites: [kubeadm-install]
+  # technique: Know stacked vs external etcd and why an odd number of members; HA needs a load-balanced --control-plane-endpoint and `kubeadm join --control-plane --certificate-key`.
+  - id: ha-control-plane
+    topic: cluster-lifecycle
+    name: Control Plane แบบ High Availability
+    prerequisites: [kubeadm-install, etcd-backup-restore]
+  # technique: `kubeadm certs check-expiration` / `kubeadm certs renew all` then restart control-plane static Pods; find cert flags in /etc/kubernetes/manifests/*.yaml; kubelet picks up manifest edits on its own.
+  - id: certificates-pki
+    topic: cluster-lifecycle
+    name: Certificates, PKI และ Static Pod Manifests ของ Control Plane
+    prerequisites: [kubeadm-install]
+
+  # ── RBAC, Helm/Kustomize และ Extension Interfaces ─────────────
+  # technique: Create imperatively (`kubectl create role/clusterrole --verb --resource`, `create rolebinding --serviceaccount ns:sa`) and always verify with `kubectl auth can-i <verb> <res> --as system:serviceaccount:ns:sa -n ns`.
+  - id: rbac
+    topic: access-and-extensions
+    name: RBAC และ ServiceAccount
+    prerequisites: [kubeconfig-contexts, yaml-manifests]
+  # technique: `helm repo add/update`, `helm install <rel> <chart> -n ns --create-namespace --set k=v | -f values.yaml`, `helm show values`, `helm list -A`, `helm upgrade`, `helm history` + `helm rollback`; writing charts is out of scope.
+  - id: helm
+    topic: access-and-extensions
+    name: ติดตั้งส่วนประกอบคลัสเตอร์ด้วย Helm
+    prerequisites: [kubectl-imperative]
+  # technique: kustomization.yaml lists resources + patches/images/namespace/commonLabels; preview with `kubectl kustomize <dir>` then `kubectl apply -k <dir>`; overlays reference a base.
+  - id: kustomize
+    topic: access-and-extensions
+    name: Kustomize (base / overlay / patches)
+    prerequisites: [yaml-manifests]
+  # technique: CRI: containerd + `crictl ps/logs/pods`; CNI: config in /etc/cni/net.d, binaries in /opt/cni/bin; CSI: driver Pods + CSIDriver objects back StorageClasses. Know which interface is to blame for each symptom.
+  - id: extension-interfaces
+    topic: access-and-extensions
+    name: Extension Interfaces (CRI, CNI, CSI)
+    prerequisites: [k8s-architecture]
+  # technique: `kubectl get crd`, `kubectl explain <kind>` works for CRDs with a schema; install an operator (often by Helm or a manifest URL), then create its custom resource and check the operator Pod's logs.
+  - id: crds-operators
+    topic: access-and-extensions
+    name: CRD และการติดตั้ง/ตั้งค่า Operator
+    prerequisites: [yaml-manifests, helm]
+
+  # ── Workloads และ Scheduling ───────────────────────────────────
+  # technique: Init containers run to completion in order before app containers; native sidecars are initContainers with restartPolicy: Always; containers in a Pod share network (localhost) and volumes.
+  - id: pods-multicontainer
+    topic: workloads-scheduling
+    name: Pod, Init Container และ Sidecar
+    prerequisites: [yaml-manifests, kubectl-imperative]
+  # technique: `kubectl set image deploy/x c=img:tag`, `rollout status/history/undo --to-revision`, tune strategy.rollingUpdate maxSurge/maxUnavailable, `kubectl scale`; record why with the kubernetes.io/change-cause annotation.
+  - id: deployments-rollouts
+    topic: workloads-scheduling
+    name: Deployment, Rolling Update และ Rollback
+    prerequisites: [pods-multicontainer]
+  # technique: `kubectl create cm/secret generic --from-literal/--from-file`; consume via env.valueFrom, envFrom or a volume; env vars do not update on change, mounted volumes do (except subPath).
+  - id: configmaps-secrets
+    topic: workloads-scheduling
+    name: ConfigMap และ Secret
+    prerequisites: [pods-multicontainer]
+  # technique: Pick the controller by need: Deployment (stateless), StatefulSet (stable name/storage), DaemonSet (one per node), Job/CronJob (run to completion); probes: startup gates liveness, liveness restarts, readiness removes from endpoints.
+  - id: self-healing-primitives
+    topic: workloads-scheduling
+    name: Primitive สำหรับแอปที่ซ่อมตัวเองได้ (Probes, DaemonSet, StatefulSet, Job)
+    prerequisites: [deployments-rollouts]
+  # technique: requests drive scheduling, limits drive throttling/OOMKill; QoS = Guaranteed/Burstable/BestEffort; LimitRange sets defaults per container, ResourceQuota caps a namespace and then requires requests/limits.
+  - id: resources-limits
+    topic: workloads-scheduling
+    name: Requests/Limits, LimitRange และ ResourceQuota
+    prerequisites: [pods-multicontainer]
+  # technique: `kubectl autoscale deploy x --cpu-percent=50 --min --max` (needs metrics-server and CPU requests); read HPA status targets; know VPA and in-place Pod resize exist and what they change.
+  - id: workload-autoscaling
+    topic: workloads-scheduling
+    name: Workload Autoscaling (HPA)
+    prerequisites: [deployments-rollouts, resources-limits]
+  # technique: nodeSelector for simple labels, nodeAffinity required/preferred for expressions, taints repel and tolerations allow (both needed to pin to a tainted node), podAntiAffinity + topologyKey to spread, priorityClassName for preemption.
+  - id: scheduling-placement
+    topic: workloads-scheduling
+    name: การจัดวาง Pod (Node Affinity, Taints/Tolerations, Pod Affinity)
+    prerequisites: [pods-multicontainer]
+  # technique: Admission runs after authn/authz: enable plugins via --enable-admission-plugins in the apiserver manifest; Pod Security Admission uses namespace labels pod-security.kubernetes.io/enforce=baseline|restricted; a rejected Pod shows the reason on create.
+  - id: admission-control
+    topic: workloads-scheduling
+    name: Admission Control และ Pod Security Admission
+    prerequisites: [certificates-pki, pods-multicontainer]
+
+  # ── Services และ Networking ────────────────────────────────────
+  # technique: Every Pod gets a routable IP and talks to every other Pod without NAT; test with a throwaway `kubectl run tmp --rm -it --image=busybox -- wget -qO- <ip>:<port>`.
+  - id: pod-connectivity
+    topic: services-networking
+    name: การเชื่อมต่อระหว่าง Pod (Kubernetes Network Model)
+    prerequisites: [pods-multicontainer, extension-interfaces]
+  # technique: `kubectl expose deploy x --port --target-port --type NodePort`; empty `kubectl get endpointslices` means the selector or readiness is wrong; port = Service, targetPort = container, nodePort = 30000-32767.
+  - id: services
+    topic: services-networking
+    name: Service (ClusterIP, NodePort, LoadBalancer) และ Endpoints
+    prerequisites: [pod-connectivity, deployments-rollouts]
+  # technique: Names are <svc>.<ns>.svc.cluster.local; test with `nslookup` from a busybox Pod; CoreDNS config is the coredns ConfigMap (Corefile) in kube-system.
+  - id: coredns
+    topic: services-networking
+    name: CoreDNS และ DNS ของ Service/Pod
+    prerequisites: [services]
+  # technique: Selected Pods become deny-all for the listed policyTypes; rules are additive ORs; `- podSelector` + `namespaceSelector` in one item = AND, two items = OR; allow UDP/TCP 53 egress when you default-deny egress.
+  - id: network-policies
+    topic: services-networking
+    name: Network Policy (กำหนดและบังคับใช้)
+    prerequisites: [pod-connectivity, services]
+  # technique: An Ingress does nothing without a controller; set ingressClassName, pathType Prefix/Exact, backend service name + port; TLS from a kubernetes.io/tls Secret. `kubectl create ingress --rule="host/path=svc:port"`.
+  - id: ingress
+    topic: services-networking
+    name: Ingress Controller และ Ingress Resource
+    prerequisites: [services]
+  # technique: GatewayClass (infra provider) -> Gateway (listeners, ports, TLS) -> HTTPRoute (parentRefs, hostnames, matches, backendRefs, weights); check status conditions Accepted/Programmed; be able to convert an Ingress to Gateway + HTTPRoute.
+  - id: gateway-api
+    topic: services-networking
+    name: Gateway API (Gateway, HTTPRoute) สำหรับ Ingress Traffic
+    prerequisites: [ingress, crds-operators]
+
+  # ── Storage ────────────────────────────────────────────────────
+  # technique: emptyDir lives with the Pod, hostPath with the node, configMap/secret/projected for injected data; volumes are declared in spec.volumes and mounted per container via volumeMounts.
+  - id: volumes-basics
+    topic: storage
+    name: ประเภท Volume พื้นฐาน (emptyDir, hostPath, projected)
+    prerequisites: [pods-multicontainer]
+  # technique: A PVC binds to a PV when storageClassName, accessModes (RWO/ROX/RWX/RWOP) and capacity fit; Pending PVC -> describe it; reclaimPolicy Retain keeps data (PV goes Released), Delete removes it.
+  - id: pv-pvc
+    topic: storage
+    name: PersistentVolume, PersistentVolumeClaim, Access Modes และ Reclaim Policy
+    prerequisites: [volumes-basics]
+  # technique: StorageClass = provisioner + parameters + reclaimPolicy + volumeBindingMode (WaitForFirstConsumer delays binding until a Pod is scheduled) + allowVolumeExpansion; mark default with the is-default-class annotation.
+  - id: storageclass-dynamic
+    topic: storage
+    name: StorageClass และ Dynamic Provisioning
+    prerequisites: [pv-pvc, extension-interfaces]
+
+  # ── Troubleshooting ────────────────────────────────────────────
+  # technique: `kubectl logs <pod> -c <c> --previous`, `-f`, `--since`; `kubectl get events -A --sort-by=.lastTimestamp`; redirect output to the file path the task gives, exactly.
+  - id: logs-and-events
+    topic: troubleshooting
+    name: Container Output Streams, Logs และ Events
+    prerequisites: [kubectl-imperative, pods-multicontainer]
+  # technique: Read the STATUS then `describe` Events: Pending (resources, taints, PVC), ImagePullBackOff (image/tag/secret), CrashLoopBackOff (logs --previous, command, probe), Running but not Ready (readiness); use `kubectl debug` / `exec` for live checks.
+  - id: troubleshoot-applications
+    topic: troubleshooting
+    name: แก้ปัญหา Pod และแอปพลิเคชัน
+    prerequisites: [logs-and-events, self-healing-primitives, scheduling-placement, configmaps-secrets]
+  # technique: `kubectl top nodes` / `kubectl top pods -A --sort-by=cpu|memory --containers`; requires metrics-server; write the answer in the exact format requested.
+  - id: resource-monitoring
+    topic: troubleshooting
+    name: ตรวจสอบการใช้ทรัพยากรของคลัสเตอร์และแอป
+    prerequisites: [logs-and-events, resources-limits]
+  # technique: If kubectl fails, SSH to the control plane: `crictl ps -a` + `crictl logs` for static Pods, fix typos/paths/ports/cert files in /etc/kubernetes/manifests, wait for kubelet to recreate; check /var/log/pods when the apiserver is down.
+  - id: troubleshoot-control-plane
+    topic: troubleshooting
+    name: แก้ปัญหา Control Plane Components
+    prerequisites: [certificates-pki, extension-interfaces, logs-and-events]
+  # technique: NotReady node: `ssh node`, `systemctl status kubelet`, `journalctl -u kubelet -e`, check /var/lib/kubelet/config.yaml and kubelet flags, containerd running, CNI present, certs valid; `systemctl enable --now kubelet`.
+  - id: troubleshoot-nodes
+    topic: troubleshooting
+    name: แก้ปัญหา Cluster และ Node (kubelet, container runtime)
+    prerequisites: [infra-prep, logs-and-events, troubleshoot-control-plane]
+  # technique: Work outward: Pod IP reachable? -> Service has endpoints (selector, targetPort, readiness)? -> DNS resolves? -> NetworkPolicy blocking? -> kube-proxy/CNI Pods healthy? -> Ingress/Gateway route + backend.
+  - id: troubleshoot-networking
+    topic: troubleshooting
+    name: แก้ปัญหา Services และ Networking
+    prerequisites: [services, coredns, network-policies, ingress]

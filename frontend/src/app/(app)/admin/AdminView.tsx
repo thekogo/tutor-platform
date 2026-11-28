@@ -1,12 +1,13 @@
 "use client";
 
 import { CreateInvite } from "@/components/admin/CreateInvite";
+import { LearnerCourseAccess } from "@/components/admin/LearnerCourseAccess";
 import { RetireQuestionButton } from "@/components/admin/RetireQuestionButton";
 import { ForbiddenView } from "@/components/ErrorViews";
 import { Loaded } from "@/components/Loaded";
 import { PageHeader } from "@/components/StateViews";
 import { api, unwrap } from "@/lib/api/client";
-import { getMe } from "@/lib/api/queries";
+import { getCourses, getMe } from "@/lib/api/queries";
 import { useLoad } from "@/lib/api/use-load";
 import { T } from "@/lib/terms";
 import { card, formatDateTime, isPast } from "@/lib/ui";
@@ -14,13 +15,14 @@ import { card, formatDateTime, isPast } from "@/lib/ui";
 type AdminData = { owner: false } | ({ owner: true } & Awaited<ReturnType<typeof loadAdminLists>>);
 
 async function loadAdminLists() {
-  const [invites, learners, flags, requests] = await Promise.all([
+  const [invites, learners, flags, requests, courses] = await Promise.all([
     api().GET("/admin/invites").then(unwrap),
     api().GET("/admin/learners").then(unwrap),
     api().GET("/admin/flags", { params: { query: { open: true } } }).then(unwrap),
     api().GET("/admin/content-requests").then(unwrap),
+    getCourses(), // the Owner sees every Course
   ]);
-  return { invites, learners, flags, requests };
+  return { invites, learners, flags, requests, courses };
 }
 
 async function loadAdmin(): Promise<AdminData> {
@@ -34,14 +36,15 @@ export function AdminView() {
   return <Loaded state={state}>{(d) => (d.owner ? <AdminPage {...d} /> : <ForbiddenView />)}</Loaded>;
 }
 
-function AdminPage({ invites, learners, flags, requests }: Awaited<ReturnType<typeof loadAdminLists>>) {
+function AdminPage({ invites, learners, flags, requests, courses }: Awaited<ReturnType<typeof loadAdminLists>>) {
+  const courseName = new Map(courses.map((c) => [c.id, c.name]));
   return (
     <div data-testid="admin-page" className="flex flex-col gap-6">
-      <PageHeader title="จัดการระบบ" description={`สำหรับ${T.owner}: เชิญ${T.learner} ตรวจ${T.flags} และ${T.contentRequest}`} />
+      <PageHeader title="จัดการระบบ" description={`สำหรับ${T.owner}: เชิญ${T.learner} กำหนด${T.course}ที่เข้าเรียนได้ ตรวจ${T.flags} และ${T.contentRequest}`} />
 
       <section className={card} aria-labelledby="inv-h">
         <h2 id="inv-h" className="mb-3 text-lg font-semibold">{T.invite}</h2>
-        <CreateInvite />
+        <CreateInvite courses={courses} />
         {invites.length > 0 && (
           <table className="mt-4 w-full text-sm">
             <caption className="sr-only">{T.invite}ทั้งหมด</caption>
@@ -49,6 +52,7 @@ function AdminPage({ invites, learners, flags, requests }: Awaited<ReturnType<ty
               <tr className="border-b border-slate-200 text-left text-slate-600">
                 <th scope="col" className="py-2">สร้างเมื่อ</th>
                 <th scope="col" className="py-2">หมดอายุ</th>
+                <th scope="col" className="py-2">{T.course}</th>
                 <th scope="col" className="py-2">สถานะ</th>
               </tr>
             </thead>
@@ -59,6 +63,7 @@ function AdminPage({ invites, learners, flags, requests }: Awaited<ReturnType<ty
                   <tr key={i.id} className="border-b border-slate-100">
                     <td className="py-2">{formatDateTime(i.createdAt)}</td>
                     <td className="py-2">{formatDateTime(i.expiresAt)}</td>
+                    <td className="py-2">{i.courseIds?.length ? i.courseIds.map((id) => courseName.get(id) ?? id).join(", ") : "—"}</td>
                     <td className="py-2">{i.usedBy ? `ใช้แล้วโดย ${i.usedBy}` : expired ? "หมดอายุ" : "ยังไม่ถูกใช้"}</td>
                   </tr>
                 );
@@ -117,6 +122,7 @@ function AdminPage({ invites, learners, flags, requests }: Awaited<ReturnType<ty
               <th scope="col" className="py-2">อีเมล</th>
               <th scope="col" className="py-2">บทบาท</th>
               <th scope="col" className="py-2">{T.placementTest}</th>
+              <th scope="col" className="py-2">{T.course}ที่เข้าเรียนได้</th>
             </tr>
           </thead>
           <tbody>
@@ -126,6 +132,9 @@ function AdminPage({ invites, learners, flags, requests }: Awaited<ReturnType<ty
                 <td className="py-2 break-all">{l.email}</td>
                 <td className="py-2">{l.isOwner ? T.owner : T.learner}</td>
                 <td className="py-2">{l.placementDone ? "ทำแล้ว" : "ยังไม่ทำ"}</td>
+                <td className="py-2 align-top">
+                  <LearnerCourseAccess learner={l} courses={courses} />
+                </td>
               </tr>
             ))}
           </tbody>

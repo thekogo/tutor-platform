@@ -117,7 +117,7 @@ func (s *Server) ListCourses(ctx context.Context, _ ListCoursesRequestObject) (L
 	if err != nil {
 		return nil, err
 	}
-	cs, err := s.app.ListCourses(ctx)
+	cs, err := s.app.ListCourses(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,11 @@ func f32p(v *float64) *float32 {
 
 // GetCourse returns the Course graph.
 func (s *Server) GetCourse(ctx context.Context, req GetCourseRequestObject) (GetCourseResponseObject, error) {
-	g, err := s.app.CourseGraph(ctx, req.CourseId)
+	a, err := actorFrom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	g, err := s.app.CourseGraph(ctx, a, req.CourseId)
 	if err != nil {
 		return nil, err
 	}
@@ -567,22 +571,27 @@ func (s *Server) ListInvites(ctx context.Context, _ ListInvitesRequestObject) (L
 	}
 	out := ListInvites200JSONResponse{}
 	for _, i := range invs {
-		out = append(out, Invite{Id: i.ID, CreatedAt: i.CreatedAt, ExpiresAt: i.ExpiresAt, UsedBy: i.UsedBy})
+		ids := i.CourseIDs
+		out = append(out, Invite{Id: i.ID, CreatedAt: i.CreatedAt, ExpiresAt: i.ExpiresAt, UsedBy: i.UsedBy, CourseIds: &ids})
 	}
 	return out, nil
 }
 
 // CreateInvite creates an invite.
-func (s *Server) CreateInvite(ctx context.Context, _ CreateInviteRequestObject) (CreateInviteResponseObject, error) {
+func (s *Server) CreateInvite(ctx context.Context, req CreateInviteRequestObject) (CreateInviteResponseObject, error) {
 	a, err := actorFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
-	i, err := s.auth.CreateInvite(ctx, a)
+	var courseIDs []openapi_types.UUID
+	if req.Body != nil && req.Body.CourseIds != nil {
+		courseIDs = *req.Body.CourseIds
+	}
+	i, err := s.auth.CreateInvite(ctx, a, courseIDs)
 	if err != nil {
 		return nil, err
 	}
-	return CreateInvite201JSONResponse{Id: i.ID, CreatedAt: i.CreatedAt, ExpiresAt: i.ExpiresAt, Url: i.URL}, nil
+	return CreateInvite201JSONResponse{Id: i.ID, CreatedAt: i.CreatedAt, ExpiresAt: i.ExpiresAt, Url: i.URL, CourseIds: &i.CourseIDs}, nil
 }
 
 // ListLearners lists Learners.
@@ -597,9 +606,32 @@ func (s *Server) ListLearners(ctx context.Context, _ ListLearnersRequestObject) 
 	}
 	out := ListLearners200JSONResponse{}
 	for _, l := range ls {
-		out = append(out, learnerJSON(l, nil))
+		out = append(out, learnerViewJSON(l))
 	}
 	return out, nil
+}
+
+func learnerViewJSON(l app.LearnerView) Learner {
+	out := learnerJSON(l.Learner, nil)
+	ids := l.CourseIDs
+	out.CourseIds = &ids
+	return out
+}
+
+// SetLearnerCourses replaces the Courses a Learner may study.
+func (s *Server) SetLearnerCourses(ctx context.Context, req SetLearnerCoursesRequestObject) (SetLearnerCoursesResponseObject, error) {
+	a, err := actorFrom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, app.E(app.KindBadRequest, "bad_request", "body required")
+	}
+	l, err := s.app.SetLearnerCourses(ctx, a, req.LearnerId, req.Body.CourseIds)
+	if err != nil {
+		return nil, err
+	}
+	return SetLearnerCourses200JSONResponse(learnerViewJSON(l)), nil
 }
 
 // ListFlags lists Flags.

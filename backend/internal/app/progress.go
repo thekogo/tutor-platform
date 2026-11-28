@@ -11,9 +11,12 @@ import (
 	"github.com/thekogo/tutor-platform/backend/internal/store"
 )
 
-// ListCourses returns every Course.
-func (s *Service) ListCourses(ctx context.Context) ([]store.Course, error) {
-	return s.q.ListCourses(ctx)
+// ListCourses returns the Courses the Actor may study (every Course for the Owner).
+func (s *Service) ListCourses(ctx context.Context, a Actor) ([]store.Course, error) {
+	if a.IsOwner {
+		return s.q.ListCourses(ctx)
+	}
+	return s.q.ListAccessibleCourses(ctx, a.LearnerID)
 }
 
 // ConceptView is a live Concept with its effective Prerequisites.
@@ -35,8 +38,8 @@ type CourseGraphView struct {
 }
 
 // CourseGraph returns a Course's Topics, live Concepts, and Prerequisites.
-func (s *Service) CourseGraph(ctx context.Context, courseID uuid.UUID) (CourseGraphView, error) {
-	g, err := s.Graph(ctx, courseID)
+func (s *Service) CourseGraph(ctx context.Context, a Actor, courseID uuid.UUID) (CourseGraphView, error) {
+	g, err := s.accessibleGraph(ctx, a, courseID)
 	if err != nil {
 		return CourseGraphView{}, err
 	}
@@ -80,11 +83,14 @@ type ConceptDetail struct {
 	HelpAvailable       bool // the Concept Tutor Chat can be opened
 }
 
-// findConcept locates the Course of a Concept.
-func (s *Service) findConcept(ctx context.Context, conceptID uuid.UUID) (*CourseGraph, store.Concept, error) {
+// findConcept locates the Course of a Concept the Actor may study.
+func (s *Service) findConcept(ctx context.Context, a Actor, conceptID uuid.UUID) (*CourseGraph, store.Concept, error) {
 	c, err := s.q.GetConcept(ctx, conceptID)
 	if err != nil {
 		return nil, c, mapNotFound(err, "concept")
+	}
+	if err := s.requireCourseAccess(ctx, a, c.CourseID); err != nil {
+		return nil, c, notFound("concept")
 	}
 	g, err := s.Graph(ctx, c.CourseID)
 	if err != nil {
@@ -98,7 +104,7 @@ func (s *Service) findConcept(ctx context.Context, conceptID uuid.UUID) (*Course
 
 // ConceptDetail returns one Concept for the Actor.
 func (s *Service) ConceptDetail(ctx context.Context, a Actor, conceptID uuid.UUID) (ConceptDetail, error) {
-	g, c, err := s.findConcept(ctx, conceptID)
+	g, c, err := s.findConcept(ctx, a, conceptID)
 	if err != nil {
 		return ConceptDetail{}, err
 	}
@@ -127,7 +133,7 @@ func (s *Service) ConceptDetail(ctx context.Context, a Actor, conceptID uuid.UUI
 
 // CourseMastery returns the Actor's Mastery for every live Concept.
 func (s *Service) CourseMastery(ctx context.Context, a Actor, courseID uuid.UUID) ([]MasteryView, error) {
-	g, err := s.Graph(ctx, courseID)
+	g, err := s.accessibleGraph(ctx, a, courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +202,7 @@ func refs(g *CourseGraph, ids []domain.ConceptID, m map[domain.ConceptID]domain.
 
 // Recommendations returns the Actor's Recommendations, ordered by Priority.
 func (s *Service) Recommendations(ctx context.Context, a Actor, courseID uuid.UUID) ([]RecommendationView, error) {
-	g, err := s.Graph(ctx, courseID)
+	g, err := s.accessibleGraph(ctx, a, courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +218,7 @@ type FormatStat struct {
 
 // FormatReport returns the Actor's accuracy per Question Format.
 func (s *Service) FormatReport(ctx context.Context, a Actor, courseID uuid.UUID) ([]FormatStat, error) {
-	if _, err := s.Graph(ctx, courseID); err != nil {
+	if _, err := s.accessibleGraph(ctx, a, courseID); err != nil {
 		return nil, err
 	}
 	rows, err := s.q.FormatReport(ctx, store.FormatReportParams{LearnerID: a.LearnerID, CourseID: courseID})
@@ -241,7 +247,7 @@ type ExamSummary struct {
 
 // ListExams returns a Course's Exams.
 func (s *Service) ListExams(ctx context.Context, a Actor, courseID uuid.UUID) ([]ExamSummary, error) {
-	if _, err := s.Graph(ctx, courseID); err != nil {
+	if _, err := s.accessibleGraph(ctx, a, courseID); err != nil {
 		return nil, err
 	}
 	exams, err := s.q.ListExams(ctx, courseID)
@@ -311,7 +317,7 @@ func (s *Service) checkPathCompletion(ctx context.Context, q *store.Queries, lea
 
 // LearningPath returns the Actor's current (or most recently completed) Learning Path.
 func (s *Service) LearningPath(ctx context.Context, a Actor, courseID uuid.UUID) (LearningPathView, error) {
-	g, err := s.Graph(ctx, courseID)
+	g, err := s.accessibleGraph(ctx, a, courseID)
 	if err != nil {
 		return LearningPathView{}, err
 	}
@@ -344,7 +350,7 @@ func pathView(g *CourseGraph, p store.LearningPath, m map[domain.ConceptID]domai
 // so the walk matches what the Learner was shown; otherwise the shortest
 // Prerequisite chain.
 func (s *Service) StartLearningPath(ctx context.Context, a Actor, courseID, root, target uuid.UUID) (LearningPathView, error) {
-	g, err := s.Graph(ctx, courseID)
+	g, err := s.accessibleGraph(ctx, a, courseID)
 	if err != nil {
 		return LearningPathView{}, err
 	}
@@ -400,7 +406,7 @@ func (s *Service) StartLearningPath(ctx context.Context, a Actor, courseID, root
 
 // AbandonLearningPath abandons the Actor's Learning Path in a Course.
 func (s *Service) AbandonLearningPath(ctx context.Context, a Actor, courseID uuid.UUID) error {
-	if _, err := s.Graph(ctx, courseID); err != nil {
+	if _, err := s.accessibleGraph(ctx, a, courseID); err != nil {
 		return err
 	}
 	return s.q.AbandonAllPaths(ctx, store.AbandonAllPathsParams{LearnerID: a.LearnerID, CourseID: courseID})

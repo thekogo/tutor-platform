@@ -40,7 +40,7 @@ func (s *Service) AskConceptHelp(ctx context.Context, a Actor, in AskConceptHelp
 	if !s.ConceptHelpAvailable() {
 		return "", E(KindUnavailable, "help_disabled", "the Tutor Chat is not configured")
 	}
-	g, c, err := s.findConcept(ctx, in.ConceptID)
+	g, c, err := s.findConcept(ctx, a, in.ConceptID)
 	if err != nil {
 		return "", err
 	}
